@@ -1,8 +1,8 @@
-# 🎮 PS4 HEN Store - Web Application
+# 🎮 B41M HEN Store - Web Application
 
-**Download dan install game/aplikasi PKG langsung di PS4 dengan satu klik!**
+**Download dan install game/aplikasi PKG langsung di B41M dengan satu klik!**
 
-![PS4 HEN Store](https://img.shields.io/badge/PS4-HEN%20Store-blue?style=for-the-badge)
+![B41M HEN Store](https://img.shields.io/badge/PS4-HEN%20Store-blue?style=for-the-badge)
 ![Version](https://img.shields.io/badge/Version-2.0-green?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-Educational-yellow?style=for-the-badge)
 
@@ -35,7 +35,7 @@
 - **Persistent**: Disimpan di localStorage
 
 ### 🎨 Modern UI
-- **PS4 Theme**: Dark theme seperti interface PS4
+- **B41M Theme**: Dark theme seperti interface B41M
 - **Responsive**: Support TV, desktop, dan mobile
 - **Animations**: Smooth transitions dan hover effects
 - **Toast Notifications**: Feedback yang jelas
@@ -317,7 +317,7 @@ PS4Game/
 ## 🔗 Useful Links
 
 - [GoldHEN](https://github.com/GoldHEN/GoldHEN_Repository) - PS4 Homebrew Enabler
-- [PS4 Guide](https://ps4guide.com/) - PS4 Jailbreak Guide
+- [B41M Guide](https://ps4guide.com/) - B41M Jailbreak Guide
 - [PS4 Homebrew](https://ps4.homebrew.community/) - Homebrew Community
 
 ---
