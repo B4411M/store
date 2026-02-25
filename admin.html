@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>B41M HEN Store - Admin Dashboard</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚙️</text></svg>">
+</head>
+<body>
+    <div id="app">
+        <!-- Admin Header -->
+        <header class="admin-header">
+            <div class="admin-logo">
+                <span class="logo-icon">⚙️</span>
+                <h1>B41M HEN Store - Admin Dashboard</h1>
+            </div>
+            <div class="admin-actions">
+                <button class="btn btn-primary" onclick="admin.showAddGameModal()">➕ Tambah Game</button>
+                <button class="btn btn-success" id="download-btn" onclick="admin.downloadGamesDataFile()" style="display:none">📄💾 Update games-data.js</button>
+                <button class="btn btn-secondary" onclick="admin.exportCatalog()">💾 Export JSON</button>
+                <button class="btn btn-secondary" onclick="document.getElementById('import-file').click()">📥 Import JSON</button>
+                <input type="file" id="import-file" accept=".json" style="display:none" onchange="admin.importCatalog(this)">
+                <button class="btn btn-warning" onclick="admin.clearAllData()">🗑️ Hapus Semua</button>
+                <a href="index.html" class="btn btn-info">🏠 Lihat Store</a>
+            </div>
+        </header>
+
+        <!-- Notification Banner -->
+        <div id="change-notification" class="change-notification" style="display:none;">
+            <div class="notification-content">
+                <span class="notification-icon">📝</span>
+                <div class="notification-text">
+                    <strong>Ada Perubahan Data!</strong>
+                    <p>Klik tombol "📄💾 Update games-data.js" untuk mengunduh file terbaru.</p>
+                </div>
+                <button class="btn btn-success" onclick="admin.downloadGamesDataFile()">📄💾 Update Sekarang</button>
+            </div>
+        </div>
+
+        <!-- Storage Info -->
+        <div class="storage-info">
+            <span>💾 Data tersimpan di localStorage browser</span>
+            <span>🔄 Auto-save setiap 5 detik</span>
+        </div>
+
+        <!-- How to Use -->
+        <div class="how-to-use">
+            <h3>📖 Cara Menggunakan</h3>
+            <div class="steps">
+                <div class="step">
+                    <span class="step-num">1</span>
+                    <div class="step-content">
+                        <strong>Tambah/Edit Game</strong>
+                        <p>Data akan otomatis tersimpan dan games-data.js akan terunduh</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <span class="step-num">2</span>
+                    <div class="step-content">
+                        <strong>File games-data.js terunduh otomatis</strong>
+                        <p>Setiap add/update, file akan terunduh otomatis</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <span class="step-num">3</span>
+                    <div class="step-content">
+                        <strong>Ganti file di project</strong>
+                        <p>Ganti <code>js/games-data.js</code> dengan file yang diunduh</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <span class="step-num">4</span>
+                    <div class="step-content">
+                        <strong>Refresh halaman store</strong>
+                        <p>Data akan tetap terlihat!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Admin Stats -->
+        <section class="admin-stats">
+            <div class="stat-card">
+                <div class="stat-icon">🎮</div>
+                <div class="stat-info">
+                    <span class="stat-value" id="total-games">0</span>
+                    <span class="stat-label">Games</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">📱</div>
+                <div class="stat-info">
+                    <span class="stat-value" id="total-apps">0</span>
+                    <span class="stat-label">Apps</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🔄</div>
+                <div class="stat-info">
+                    <span class="stat-value" id="total-updates">0</span>
+                    <span class="stat-label">Updates</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">📦</div>
+                <div class="stat-info">
+                    <span class="stat-value" id="total-dlc">0</span>
+                    <span class="stat-label">DLC</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">💾</div>
+                <div class="stat-info">
+                    <span class="stat-value" id="storage-used">0 GB</span>
+                    <span class="stat-label">Total Size</span>
+                </div>
+            </div>
+            <div class="stat-card highlight">
+                <div class="stat-icon">⬇️</div>
+                <div class="stat-info">
+                    <span class="stat-value" id="total-downloads">0</span>
+                    <span class="stat-label">Downloads</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Admin Filters -->
+        <section class="admin-filters">
+            <div class="filter-group">
+                <label>Kategori:</label>
+                <select id="admin-category-filter" onchange="admin.filterGames()">
+                    <option value="all">Semua</option>
+                    <option value="games">Games</option>
+                    <option value="apps">Apps</option>
+                    <option value="updates">Updates</option>
+                    <option value="dlc">DLC</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Cari:</label>
+                <input type="text" id="admin-search" placeholder="Cari game..." oninput="admin.filterGames()">
+            </div>
+            <div class="filter-group">
+                <label>Urutkan:</label>
+                <select id="admin-sort" onchange="admin.filterGames()">
+                    <option value="newest">Terbaru</option>
+                    <option value="oldest">Terlama</option>
+                    <option value="name">Nama</option>
+                    <option value="size">Ukuran</option>
+                    <option value="downloads">Downloads</option>
+                </select>
+            </div>
+        </section>
+
+        <!-- Admin Game List -->
+        <section class="admin-game-list">
+            <div class="list-header">
+                <h2>📋 Daftar Game/Item</h2>
+                <span class="item-count" id="item-count">0 item</span>
+            </div>
+            <div class="game-table-container">
+                <table class="game-table" id="game-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Gambar</th>
+                            <th>Judul</th>
+                            <th>Kategori</th>
+                            <th>Ukuran</th>
+                            <th>Publisher</th>
+                            <th>Downloads</th>
+                            <th>Status</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="game-table-body"></tbody>
+                </table>
+            </div>
+            <div class="empty-state" id="empty-state" style="display:none">
+                <div class="empty-icon">📭</div>
+                <h3>Belum ada game</h3>
+                <p>Tambahkan game pertama menggunakan tombol "Tambah Game"</p>
+                <button class="btn btn-primary" onclick="admin.showAddGameModal()">➕ Tambah Game Pertama</button>
+            </div>
+        </section>
+
+        <!-- Admin Footer -->
+        <footer class="admin-footer">
+            <p>💾 Data tersimpan di localStorage browser - Auto-save aktif</p>
+            <p>📄 games-data.js akan terunduh otomatis setiap add/update game</p>
+        </footer>
+    </div>
+
+    <!-- Add/Edit Game Modal -->
+    <div id="game-modal" class="modal-overlay" style="display:none">
+        <div class="ps-modal admin-modal">
+            <div class="modal-header">
+                <h3 id="modal-title">Tambah Game Baru</h3>
+                <button class="close-btn" onclick="admin.closeModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="game-form" onsubmit="admin.saveGame(event)">
+                    <input type="hidden" id="game-id">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="game-title">Judul Game *</label>
+                            <input type="text" id="game-title" required placeholder="Contoh: GTA V">
+                        </div>
+                        <div class="form-group">
+                            <label for="game-category">Kategori *</label>
+                            <select id="game-category" required>
+                                <option value="games">Game</option>
+                                <option value="apps">Aplikasi</option>
+                                <option value="updates">Update</option>
+                                <option value="dlc">DLC</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="game-publisher">Publisher</label>
+                            <input type="text" id="game-publisher" placeholder="Contoh: Rockstar Games">
+                        </div>
+                        <div class="form-group">
+                            <label for="game-version">Version</label>
+                            <input type="text" id="game-version" placeholder="1.0" value="1.0">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="game-rating">Rating</label>
+                            <select id="game-rating">
+                                <option value="E">E - Everyone</option>
+                                <option value="E10+">E10+ - Everyone 10+</option>
+                                <option value="T">T - Teen</option>
+                                <option value="M">M - Mature</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="game-size">Ukuran (bytes) *</label>
+                            <input type="number" id="game-size" required placeholder="51539607552">
+                            <small style="color: var(--ps-text-secondary); font-size: 11px;">10 GB = 10737418240 | 50 GB = 53687091200</small>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="game-url">URL PKG (HTTPS) *</label>
+                        <input type="url" id="game-url" required placeholder="https://example.com/game.pkg">
+                        <small style="color: var(--ps-warning); font-size: 11px;">⚠️ Pastikan URL adalah HTTPS dan langsung ke file .pkg</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="game-image">URL Gambar/Cover</label>
+                        <input type="url" id="game-image" placeholder="https://example.com/cover.jpg">
+                        <small style="color: var(--ps-text-secondary); font-size: 11px;">Kosongkan untuk menggunakan gambar placeholder</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="game-description">Deskripsi</label>
+                        <textarea id="game-description" rows="3" placeholder="Deskripsi game..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="game-downloads">Jumlah Downloads (default: 0)</label>
+                        <input type="number" id="game-downloads" value="0" min="0">
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="admin.closeModal()">Batal</button>
+                        <button type="submit" class="btn btn-primary">💾 Simpan & Download</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm Delete Modal -->
+    <div id="delete-modal" class="modal-overlay" style="display:none">
+        <div class="ps-modal" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3>⚠️ Konfirmasi Hapus</h3>
+                <button class="close-btn" onclick="admin.closeDeleteModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <p>Apakah Anda yakin ingin menghapus game ini?</p>
+                <p id="delete-game-title" style="font-weight: bold; margin-top: 10px;"></p>
+                <p style="color: var(--ps-error); font-size: 12px; margin-top: 10px;">⚠️ Tindakan ini tidak dapat dibatalkan!</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="admin.closeDeleteModal()">Batal</button>
+                <button class="btn btn-danger" onclick="admin.confirmDelete()">🗑️ Hapus</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
+    <!-- Admin Scripts -->
+    <script src="js/games-data.js"></script>
+    <script src="js/admin-manager.js"></script>
+</body>
+</html>
+
+<style>
+/* Admin Dashboard Specific Styles */
+.admin-header {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    padding: 20px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid var(--ps-gold);
+}
+
+.admin-logo { display: flex; align-items: center; gap: 15px; }
+.admin-logo .logo-icon { font-size: 36px; }
+.admin-logo h1 { font-size: 20px; font-weight: 700; color: var(--ps-text); margin: 0; }
+.admin-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+/* Change Notification */
+.change-notification {
+    background: linear-gradient(135deg, rgba(255,193,7,0.3) 0%, rgba(255,152,0,0.3) 100%);
+    border-bottom: 2px solid var(--ps-warning);
+    padding: 15px 30px;
+}
+
+.notification-content {
+    max-width: 1400px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.notification-icon { font-size: 32px; }
+.notification-text { flex: 1; }
+.notification-text strong { display: block; margin-bottom: 5px; }
+.notification-text p { margin: 0; font-size: 13px; color: var(--ps-text-secondary); }
+
+.storage-info {
+    background: linear-gradient(135deg, rgba(76,175,80,0.2) 0%, rgba(0,150,136,0.2) 100%);
+    padding: 12px 30px;
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    font-size: 13px;
+    color: var(--ps-text-secondary);
+}
+
+.how-to-use {
+    max-width: 1400px;
+    margin: 20px auto;
+    padding: 25px 30px;
+    background: var(--ps-gray);
+    border-radius: 12px;
+}
+
+.how-to-use h3 { margin-bottom: 20px; font-size: 18px; color: var(--ps-text); }
+.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
+.step { display: flex; gap: 15px; align-items: flex-start; }
+.step-num {
+    width: 32px; height: 32px; background: var(--ps-light-blue); color: white;
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 14px; flex-shrink: 0;
+}
+.step-content strong { display: block; margin-bottom: 5px; font-size: 14px; }
+.step-content p { color: var(--ps-text-secondary); font-size: 13px; margin: 0; }
+.step-content code { background: var(--ps-dark); padding: 2px 8px; border-radius: 4px; font-family: monospace; color: var(--ps-gold); }
+
+.btn {
+    padding: 12px 20px; border: none; border-radius: 6px; font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px;
+}
+.btn:hover { transform: translateY(-2px); }
+.btn-primary { background: var(--ps-light-blue); color: white; }
+.btn-secondary { background: var(--ps-light-gray); color: var(--ps-text); }
+.btn-warning { background: var(--ps-warning); color: var(--ps-dark); }
+.btn-danger { background: var(--ps-error); color: white; }
+.btn-success { background: var(--ps-success); color: white; }
+.btn-info { background: linear-gradient(135deg, #2196F3, #1976D2); color: white; }
+
+.admin-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; padding: 20px 30px; max-width: 1400px; margin: 0 auto; }
+.stat-card { background: var(--ps-gray); border-radius: 10px; padding: 15px; display: flex; align-items: center; gap: 12px; transition: all 0.3s; }
+.stat-card:hover { transform: translateY(-3px); }
+.stat-card.highlight { background: linear-gradient(135deg, var(--ps-dark-blue) 0%, var(--ps-blue) 100%); border: 1px solid var(--ps-light-blue); }
+.stat-icon { font-size: 28px; }
+.stat-info { display: flex; flex-direction: column; }
+.stat-value { font-size: 22px; font-weight: 700; color: var(--ps-text); }
+.stat-label { font-size: 11px; color: var(--ps-text-secondary); text-transform: uppercase; }
+
+.admin-filters { display: flex; gap: 20px; padding: 0 30px 20px; max-width: 1400px; margin: 0 auto; flex-wrap: wrap; }
+.filter-group { display: flex; align-items: center; gap: 10px; }
+.filter-group label { font-size: 14px; color: var(--ps-text-secondary); }
+.filter-group select, .filter-group input { background: var(--ps-light-gray); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 10px 15px; color: var(--ps-text); font-size: 14px; min-width: 150px; }
+.filter-group input { min-width: 250px; }
+
+.admin-game-list { padding: 20px 30px 60px; max-width: 1400px; margin: 0 auto; }
+.list-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.list-header h2 { font-size: 20px; }
+.item-count { background: var(--ps-light-gray); padding: 8px 16px; border-radius: 20px; font-size: 13px; color: var(--ps-text-secondary); }
+.game-table-container { background: var(--ps-gray); border-radius: 12px; overflow: hidden; }
+.game-table { width: 100%; border-collapse: collapse; }
+.game-table th, .game-table td { padding: 12px 15px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.game-table th { background: var(--ps-dark); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--ps-text-secondary); }
+.game-table tbody tr { transition: all 0.2s; }
+.game-table tbody tr:hover { background: var(--ps-light-gray); }
+.game-table tbody tr.new-row { background: rgba(0,255,0,0.05); }
+.game-table img { width: 35px; height: 50px; object-fit: cover; border-radius: 4px; }
+.game-table .title-cell { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.game-table .size-cell { font-size: 12px; color: var(--ps-text-secondary); }
+.badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; text-transform: uppercase; }
+.badge-games { background: var(--ps-light-blue); color: white; }
+.badge-apps { background: var(--ps-success); color: white; }
+.badge-updates { background: var(--ps-warning); color: var(--ps-dark); }
+.badge-dlc { background: #9C27B0; color: white; }
+.new-badge { background: var(--ps-success); color: white; padding: 2px 6px; border-radius: 3px; font-size: 9px; margin-left: 8px; }
+.status-valid { color: var(--ps-success); }
+.status-invalid { color: var(--ps-error); }
+.action-buttons { display: flex; gap: 6px; }
+.action-buttons button { padding: 6px 10px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; transition: all 0.2s; }
+.btn-edit { background: var(--ps-light-blue); color: white; }
+.btn-delete { background: var(--ps-error); color: white; }
+
+.empty-state { text-align: center; padding: 60px 20px; background: var(--ps-gray); border-radius: 12px; }
+.empty-icon { font-size: 60px; margin-bottom: 20px; opacity: 0.5; }
+.empty-state h3 { font-size: 20px; margin-bottom: 10px; }
+.empty-state p { color: var(--ps-text-secondary); margin-bottom: 20px; }
+
+.admin-footer { background: var(--ps-gray); padding: 25px 30px; text-align: center; border-top: 1px solid rgba(255,255,255,0.1); }
+.admin-footer p { color: var(--ps-text-secondary); font-size: 13px; margin-bottom: 5px; }
+
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.form-group { margin-bottom: 18px; }
+.form-group label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500; }
+.form-group input, .form-group select, .form-group textarea { width: 100%; background: var(--ps-light-gray); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 10px 14px; color: var(--ps-text); font-size: 14px; }
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: var(--ps-light-blue); }
+.form-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 25px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); }
+.admin-modal { max-width: 550px; }
+
+@media (max-width: 768px) {
+    .admin-header { flex-direction: column; gap: 15px; }
+    .admin-actions { justify-content: center; }
+    .notification-content { flex-direction: column; text-align: center; }
+    .form-row { grid-template-columns: 1fr; }
+    .game-table-container { overflow-x: auto; }
+    .game-table { min-width: 800px; }
+}
+</style>
+

@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>B41M Store - PS4 HEN Store </title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>">
+</head>
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header class="ps-header">
+            <div class="header-content">
+                <div class="logo-section">
+                    <div class="ps-logo">
+                        <svg viewBox="0 0 100 50" width="100" height="25">
+                            <text x="50" y="35" text-anchor="middle" fill="#003791" font-size="24" font-weight="bold" font-family="Arial">PS4</text>
+                        </svg>
+                    </div>
+                    <span class="store-badge">B41M - HEN STORE</span>
+                </div>
+                
+                <nav class="main-nav">
+                    <a href="#" class="nav-item active" data-category="all">
+                        <span class="nav-icon">🏠</span>
+                        <span>Beranda</span>
+                    </a>
+                    <a href="#" class="nav-item" data-category="games">
+                        <span class="nav-icon">🎮</span>
+                        <span>Game</span>
+                    </a>
+                    <a href="#" class="nav-item" data-category="apps">
+                        <span class="nav-icon">📱</span>
+                        <span>Aplikasi</span>
+                    </a>
+                    <a href="#" class="nav-item" data-category="updates">
+                        <span class="nav-icon">🔄</span>
+                        <span>Update</span>
+                    </a>
+                    <a href="#" class="nav-item" data-category="dlc">
+                        <span class="nav-icon">📦</span>
+                        <span>DLC</span>
+                    </a>
+                </nav>
+                
+                <div class="header-actions">
+                    <div class="search-box">
+                        <input type="text" id="search-input" placeholder="Cari game/aplikasi...">
+                        <span class="search-icon">🔍</span>
+                    </div>
+                    <button class="btn-icon" onclick="app.showUrlDownload()" title="Download dari URL">
+                        <span>⬇️</span>
+                    </button>
+                    <button class="btn-icon" onclick="app.toggleFavorites()" title="Favorit">
+                        <span>❤️</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Hero Section -->
+        <section class="hero-section" id="hero-section">
+            <div class="hero-background"></div>
+            <div class="hero-content">
+                <div class="hero-info">
+                    <span class="hero-badge" id="hero-badge">Unggulan</span>
+                    <h1 id="hero-title">PS4 HEN STORE</h1>
+                    <p id="hero-desc">Download dan install game langsung di PS4 Anda dengan satu klik</p>
+                    <div class="hero-stats">
+                        <div class="stat">
+                            <span class="stat-value" id="total-games">0</span>
+                            <span class="stat-label">Game</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value" id="total-apps">0</span>
+                            <span class="stat-label">Apps</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value" id="total-size">0 GB</span>
+                            <span class="stat-label">Total Size</span>
+                        </div>
+                    </div>
+                    <div class="hero-actions">
+                        <button class="ps-btn-primary" onclick="app.downloadFeatured()">
+                            <span>⬇️</span> Download Sekarang
+                        </button>
+                        <button class="ps-btn-secondary" onclick="app.showGameDetail(app.featuredGame?.id || 1)">
+                            <span>ℹ️</span> Selengkapnya
+                        </button>
+                    </div>
+                </div>
+                <div class="hero-image" id="hero-image">
+                    <div class="game-cover">
+                        <img src="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 400'><rect fill='%231a1a1a' width='300' height='400'/><text x='150' y='200' text-anchor='middle' fill='%23666' font-size='20'>PS4 STORE</text></svg>" 
+                             alt="Featured Game" id="hero-img">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Featured Carousel -->
+        <section class="featured-section">
+            <div class="section-header">
+                <h2 class="section-title">⭐ Game Unggulan</h2>
+                <div class="carousel-nav">
+                    <button class="carousel-btn prev" onclick="app.prevFeatured()">❮</button>
+                    <button class="carousel-btn next" onclick="app.nextFeatured()">❯</button>
+                </div>
+            </div>
+            <div class="featured-carousel" id="featured-carousel">
+                <!-- Featured games will be rendered here -->
+            </div>
+        </section>
+
+        <!-- Quick Categories -->
+        <section class="quick-categories">
+            <button class="category-btn active" data-category="all">Semua</button>
+            <button class="category-btn" data-category="games">🎮 Game</button>
+            <button class="category-btn" data-category="apps">📱 Aplikasi</button>
+            <button class="category-btn" data-category="updates">🔄 Update</button>
+            <button class="category-btn" data-category="dlc">📦 DLC</button>
+        </section>
+
+        <!-- Top Downloads -->
+        <section class="top-section">
+            <div class="section-header">
+                <h2 class="section-title">🔥 Top Downloads</h2>
+                <a href="#" class="view-all" onclick="app.filterBy('popular')">Lihat Semua →</a>
+            </div>
+            <div class="top-grid" id="top-grid">
+                <!-- Top games will be rendered here -->
+            </div>
+        </section>
+
+        <!-- Main Catalog -->
+        <section class="catalog-section">
+            <div class="section-header">
+                <h2 class="section-title" id="catalog-title">Katalog Lengkap</h2>
+                <div class="catalog-filters">
+                    <select id="sort-filter" onchange="app.applyFilters()">
+                        <option value="newest">Terbaru</option>
+                        <option value="popular">Terpopuler</option>
+                        <option value="size">Ukuran</option>
+                        <option value="name">Nama</option>
+                    </select>
+                    <select id="size-filter" onchange="app.applyFilters()">
+                        <option value="all">Semua Ukuran</option>
+                        <option value="small">< 10 GB</option>
+                        <option value="medium">10-30 GB</option>
+                        <option value="large">> 30 GB</option>
+                    </select>
+                </div>
+            </div>
+            <div class="game-grid" id="game-grid">
+                <!-- Games will be rendered here -->
+            </div>
+            <div class="load-more-container">
+                <button class="ps-btn-secondary" onclick="app.loadMore()" id="load-more-btn" style="display:none">
+                    Load More
+                </button>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="ps-footer">
+            <div class="footer-content">
+                <div class="footer-logo">
+                    <svg viewBox="0 0 100 50" width="80" height="20">
+                        <text x="50" y="35" text-anchor="middle" fill="#003791" font-size="20" font-weight="bold" font-family="Arial">PS4</text>
+                    </svg>
+                </div>
+                <p class="footer-text">© 2024 PS4 HEN Store - For Homebrew Use Only</p>
+                <p class="footer-warning">⚠️ Hanya install PKG dari sumber terpercaya</p>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Install Modal -->
+    <div id="install-modal" class="modal-overlay" style="display:none">
+        <div class="ps-modal">
+            <div class="modal-header">
+                <h3 id="modal-game-title">Game Title</h3>
+                <button class="close-btn" onclick="app.closeModal('install-modal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-image">
+                    <img id="modal-game-image" src="" alt="Game Cover">
+                </div>
+                <div class="game-details">
+                    <div class="detail-row">
+                        <span class="detail-label">Publisher:</span>
+                        <span id="modal-publisher">Unknown</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Size:</span>
+                        <span id="modal-size">0 GB</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Version:</span>
+                        <span id="modal-version">1.0</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Category:</span>
+                        <span id="modal-category">Game</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Rating:</span>
+                        <span id="modal-rating">M</span>
+                    </div>
+                    <div class="game-description" id="modal-description">
+                        Description here
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="ps-btn-secondary" onclick="app.addToFavorites()">
+                    <span>❤️</span> Favorit
+                </button>
+                <button class="ps-btn-secondary" onclick="app.closeModal('install-modal')">Batal</button>
+                <button class="ps-btn-primary" id="install-btn" onclick="app.confirmInstall()">
+                    <span>⬇️</span> Download & Install
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Progress Modal -->
+    <div id="progress-modal" class="modal-overlay" style="display:none">
+        <div class="ps-modal">
+            <div class="modal-header">
+                <h3 id="progress-title">Downloading...</h3>
+                <button class="close-btn" onclick="app.cancelDownload()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="progress-game-info">
+                    <img id="progress-image" src="" alt="Game" class="progress-thumb">
+                    <div>
+                        <h4 id="progress-filename">Game.pkg</h4>
+                        <p id="progress-status">Preparing download...</p>
+                    </div>
+                </div>
+                <div class="progress-container">
+                    <div class="progress-info">
+                        <span id="progress-percent">0%</span>
+                        <span id="progress-bytes">0 MB / 0 MB</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+                    </div>
+                    <div class="progress-speed">
+                        <span id="progress-speed">0 MB/s</span>
+                        <span id="progress-eta">ETA: --:--</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="ps-btn-secondary" onclick="app.cancelDownload()">Batal</button>
+                <button class="ps-btn-primary" id="open-game-btn" onclick="app.openInstalledGame()" style="display:none">
+                    <span>🎮</span> Buka Game
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- URL Download Modal -->
+    <div id="url-modal" class="modal-overlay" style="display:none">
+        <div class="ps-modal">
+            <div class="modal-header">
+                <h3>Download dari URL</h3>
+                <button class="close-btn" onclick="app.closeModal('url-modal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>URL PKG:</label>
+                    <input type="text" id="pkg-url" placeholder="https://example.com/game.pkg">
+                </div>
+                <div class="form-group">
+                    <label>Nama Game (opsional):</label>
+                    <input type="text" id="pkg-name" placeholder="Nama game">
+                </div>
+                <p class="url-note">⚠️ Pastikan URL adalah HTTPS dan langsung ke file .pkg</p>
+            </div>
+            <div class="modal-footer">
+                <button class="ps-btn-secondary" onclick="app.closeModal('url-modal')">Batal</button>
+                <button class="ps-btn-primary" onclick="app.downloadFromUrl()">
+                    <span>⬇️</span> Download
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Favorites Modal -->
+    <div id="favorites-modal" class="modal-overlay" style="display:none">
+        <div class="ps-modal" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3>❤️ Favorit Saya</h3>
+                <button class="close-btn" onclick="app.closeModal('favorites-modal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div id="favorites-list" class="favorites-list">
+                    <p class="empty-message">Belum ada favorit</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="ps-btn-secondary" onclick="app.clearFavorites()">Hapus Semua</button>
+                <button class="ps-btn-primary" onclick="app.closeModal('favorites-modal')">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
+    <!-- Scripts -->
+    <script src="js/games-data.js"></script>
+    <script src="js/app.js"></script>
+    <script src="js/download-manager.js"></script>
+    <script src="js/pkg-installer.js"></script>
+</body>
+</html>
+
