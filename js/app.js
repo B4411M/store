@@ -30,6 +30,22 @@ class PS4StoreApp {
         console.log('PS4 HEN Store initializing...');
         console.log('Running on PS4:', this.isPS4);
 
+        // Detect file:// protocol (local file access)
+        this.isLocalFile = window.location.protocol === 'file:';
+        
+        if (this.isLocalFile) {
+            console.warn('Running via file:// protocol - fetch() will not work');
+            this.showLocalFileWarning();
+            // Fallback to embedded games-data.js
+            this.loadFromEmbeddedCatalog();
+            this.catalogLoaded = true;
+            this.renderFeatured();
+            this.renderTopDownloads();
+            this.renderGameCatalog();
+            this.updateStats();
+            return;
+        }
+
         // Set GoldHEN URL for PKG installer
         this.pkgInstaller.setGoldHENUrl(this.goldhenUrl);
 
@@ -47,6 +63,45 @@ class PS4StoreApp {
         }
 
         console.log('PS4 HEN Store ready!');
+    }
+
+    showLocalFileWarning() {
+        // Create warning banner
+        const banner = document.createElement('div');
+        banner.id = 'local-file-warning';
+        banner.style.cssText = `
+            position: fixed; top: 0; left: 0; right: 0; 
+            background: #ff9800; color: #000; padding: 15px; 
+            text-align: center; z-index: 9999; font-weight: 600;
+            font-size: 14px; box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        `;
+        banner.innerHTML = `
+            ⚠️ <strong>Mode File Lokal</strong> - fetch() tidak jalan di file://<br>
+            <small>Jalankan: <code>python3 -m http.server 8080</code> lalu buka <a href="http://localhost:8080" style="color:#000;text-decoration:underline;">http://localhost:8080</a></small>
+            <button onclick="this.parentElement.remove()" style="margin-left:15px;padding:2px 8px;background:#000;color:#fff;border:none;border-radius:4px;cursor:pointer;">×</button>
+        `;
+        document.body.insertBefore(banner, document.body.firstChild);
+        
+        // Also show toast
+        setTimeout(() => {
+            this.showToast('⚠️ Mode file:// - Gunakan HTTP server (python3 -m http.server 8080)', 'warning');
+        }, 1000);
+    }
+
+    loadFromEmbeddedCatalog() {
+        try {
+            if (typeof PS4_GAME_CATALOG !== 'undefined') {
+                console.log('Loading from games-data.js (fallback):', PS4_GAME_CATALOG.length);
+                this.saveGamesToStorage(PS4_GAME_CATALOG);
+                this.showToast('Memuat katalog dari fallback (games-data.js)', 'info');
+            } else {
+                console.warn('No embedded catalog found');
+                this.showToast('Tidak ada data game - buka via HTTP server', 'error');
+            }
+        } catch (e) {
+            console.error('Failed to load embedded catalog:', e);
+            this.showToast('Error load fallback: ' + e.message, 'error');
+        }
     }
 
     async loadCatalog() {
