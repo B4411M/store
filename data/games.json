@@ -1,46 +1,550 @@
 {
-  "version": 1,
+  "version": 2,
   "updated": "2026-09-24T00:00:00Z",
   "games": [
     {
-      "id": "homebrew-example",
-      "title": "Example Homebrew",
-      "title_id": "HB000001",
-      "type": "homebrew",
-      "category": "homebrew",
-      "version": "1.0.0",
+      "id": "309",
+      "title": "EA Sports FC 26 - Unlock",
+      "title_id": "GAME309",
+      "type": "game",
+      "category": "dlc",
+      "version": "1.0",
       "firmware": {
         "min": "9.00",
         "max": "13.00"
       },
-      "size": 524288000,
+      "size": 107374,
       "pkg": {
-        "url": "https://example.com/example.pkg",
-        "sha256": "a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456"
+        "url": "https://download.akirabox.com/uploads/users/AY2xm0Ao3RO1/co0KgJdKPg7eqWw4nde-%5BPS4ID%5D-EA.SPORTS.FC.26_CUSA52342_Unlock-Offline_OPOISSO893.pkg?access=QahRDZ1tmayZWYwRWdwonMxZWc5oXdyJGdsJTb&token=PzEhXy0lM1khIFw4NC48IDdPNChKU1grJzQhKlFTXUBWPicFCA4NH0kuFA0ICAAROy4iJC0yPTtcWEFFFAoJ",
+        "sha256": "SHA256_PENDING"
       },
       "media": {
-        "icon": "https://example.com/icon.png",
-        "background": "https://example.com/background.jpg"
+        "icon": "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhfaOmGIyJ-s5pLu5OsW0WNb7UfD5AztLpk3QY_rxvjgRyZcIKq4Ah2Z_-WPw0rwbo8gmKfiek5FnI8YGXtwAgiIzImTZ7C5UCdSCq1jwjFDHP4YOtGRuuLy0BS2VmS7pzbcZq97Y2mYjpPKilvLDD7z_7xBilsbs_ccMQXyPFr6W500NtP8Fy6Bbzes1U5/w400-h225/EA%20Sports%20FC%2026.jpg",
+        "background": ""
       },
-      "screenshots": [
-        "https://example.com/screenshot1.jpg",
-        "https://example.com/screenshot2.jpg",
-        "https://example.com/screenshot3.jpg"
-      ],
-      "description": "Example homebrew application for PS4. This is a demonstration of the store's capabilities.",
-      "author": "Developer Name",
-      "website": "https://github.com/example/homebrew",
-      "source": "https://github.com/example/homebrew",
-      "license": "MIT",
-      "changelog": "v1.0.0 - Initial release\n- Basic functionality\n- PS4 compatibility",
-      "version_history": [
-        {
-          "version": "1.0.0",
-          "date": "2026-01-15",
-          "changes": "Initial release with basic functionality"
-        }
-      ],
-      "featured": true
+      "screenshots": [],
+      "description": "Unlock",
+      "author": "Electronic Arts",
+      "website": "",
+      "source": "",
+      "license": "Unknown",
+      "changelog": "",
+      "version_history": [],
+      "featured": false,
+      "downloads": 0,
+      "createdAt": "2026-02-07T04:53:44.711Z"
+    },
+    {
+      "id": "1",
+      "title": "PES 2026",
+      "title_id": "EP9000-CUSA00207_00-PES202600000000",
+      "type": "game",
+      "category": "games",
+      "version": "1.0",
+      "firmware": {
+        "min": "9.00",
+        "max": "13.00"
+      },
+      "size": 64949672960,
+      "pkg": {
+        "url": "https://download.akirabox.com/uploads/users/AY2xm0Ao3RO1/coGs9s4EBR0mDTAWMde-BASE GAME BITBOX PATCH SUMMER 2026_2.pkg?access=QbhVDZ1tWbyBTYiRGawQHOylHNtFmbuVTesVXb&token=JiAhLkQmLzkhQTAiMCMhLEQxMz8nKU4nMSw_LjZBXERWVy1ZShEFEw",
+        "sha256": "SHA256_PENDING"
+      },
+      "media": {
+        "icon": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTSnWPUdC9FSVy6WsmHaRTi1GFfPD9dtPg6rQ&s",
+        "background": ""
+      },
+      "screenshots": [],
+      "description": "Bola sepak modern dengan grafis realistis dan gameplay mendalam. Nikmati pengalaman sepak bola tercanggih dengan visual stunning dan gameplay realistis.",
+      "author": "Konami",
+      "website": "",
+      "source": "",
+      "license": "Unknown",
+      "changelog": "",
+      "version_history": [],
+      "featured": false,
+      "downloads": 0,
+      "createdAt": "2026-02-07T02:33:53.918Z"
+    },
+    {
+      "id": "2",
+      "title": "GTA V - Grand Theft Auto V",
+      "title_id": "EP1004-CUSA00419_00-GTA5000000000000",
+      "type": "game",
+      "category": "games",
+      "version": "1.0",
+      "firmware": {
+        "min": "9.00",
+        "max": "13.00"
+      },
+      "size": 51539607552,
+      "pkg": {
+        "url": "https://eeur1.akirabox.com/uploads/users/AY2xm0Ao3RO1/coWqnczUZKGdm9emJde-%5BPS4ID%5D-gtav.v1.00-00411.pkg?access=wahVHZntWayhWYtRGOwcXa5MGc1NWclJmbsdWb",
+        "sha256": "SHA256_PENDING"
+      },
+      "media": {
+        "icon": "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEi7qkEUE4EX4FL_ArO5BrmUWRZHOyfW_nBuUJZr4MUvBGPw27swkk6mICitdXzG7EC5NEayg9ag_djWHOzOh4mcDx4jQVDimKxxhal9kwvrm0tEdqCEmgf9D2YCwEVnrRoeM6zzkUU7wgVs7JAXJRKjFWTHovL8rR2HvAhRmpscGRYzt94flSkIc-iZE1qv/w400-h224/g1.jpg",
+        "background": ""
+      },
+      "screenshots": [],
+      "description": "Grand Theft Auto V adalah salah satu game aksi-petualangan terpopuler yang dirilis oleh Rockstar Games.Grand Theft Auto V adalah game aksi-petualangan yang menawarkan pengalaman dunia terbuka yang mendalam dan luas. Dalam game ini, Anda akan menjelajahi kota Los Santos yang kaya dengan berbagai aktivitas dan misi, serta mengikuti kisah tiga karakter yang saling terhubung dalam dunia kriminal.\n\nIkuti kisah tiga protagonis utama — Michael De Santa, Franklin Clinton, dan Trevor Philips — yang masing-masing memiliki latar belakang dan motivasi yang berbeda. Cerita ini terjalin dalam berbagai misi yang menarik dan penuh aksi.",
+      "author": "Rockstar Games",
+      "website": "",
+      "source": "",
+      "license": "Unknown",
+      "changelog": "",
+      "version_history": [],
+      "featured": false,
+      "downloads": 0,
+      "createdAt": "2026-02-06T23:47:13.918Z"
+    },
+    {
+      "id": "4",
+      "title": "Red Dead Redemption",
+      "title_id": "EP1004-CUSA03041_00-RDR2S00000000000",
+      "type": "game",
+      "category": "games",
+      "version": "1.00",
+      "firmware": {
+        "min": "9.00",
+        "max": "13.00"
+      },
+      "size": 107374182400,
+      "pkg": {
+        "url": "https://download.akirabox.com/uploads/users/AY2xm0Ao3RO1/coOANZt2HFNeuD9A0de-%5BPS4ID%5D-Red.Dead.Redemption.v1.00-36843.pkg?access=AMhVHZ5tmcyJWY6RGMrFHbwQWZ1RWcqFzZtdTb&token=PzEhXy0lM1k2BBZFIAQPEEozFw8BDB4ADQ4cRRJQQERUTEFdXFVdWhQKFQ",
+        "sha256": "SHA256_PENDING"
+      },
+      "media": {
+        "icon": "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjmJko6RN2tWqEsrfqA1QzLGTcVUuiV7qEZvvjcLge1zSFG-FuOEO97TL4gMZLsq-SRtnJcQ4UyPtF3C-lJqYEDdFHTKIGBAJHpXMGKClsCtSbxoLZ4QfuKohjTG_kf6uKTnC72bdV1FiE9OVzCm0rOB9ucEmk93dzNYEKR4dp2c1SXn2zNnFyLY4RJCe2V/w400-h225/Red%20Dead%20Redemption.jpg",
+        "background": ""
+      },
+      "screenshots": [],
+      "description": "Red Dead Redemption  adalah game aksi-petualangan yang dirilis oleh Rockstar Games.Red Dead Redemption  adalah sebuah game aksi-petualangan yang menawarkan pengalaman dunia terbuka yang mendalam dan realistis, berlatar belakang Amerika Serikat akhir abad ke-19. Game ini merupakan prekuel dari Red Dead Redemption dan menempatkan pemain dalam peran Arthur Morgan, seorang anggota kelompok penjahat yang menghadapi berbagai tantangan dalam dunia yang sedang berubah.",
+      "author": "Rockstar Games",
+      "website": "",
+      "source": "",
+      "license": "Unknown",
+      "changelog": "",
+      "version_history": [],
+      "featured": false,
+      "downloads": 0,
+      "createdAt": "2026-02-06T18:13:53.918Z"
+    },
+    {
+      "id": "5",
+      "title": "The Last of Us Part II",
+      "title_id": "EP9000-CUSA07820_00-THELASTOFUSPART2",
+      "type": "game",
+      "category": "games",
+      "version": "1.00",
+      "firmware": {
+        "min": "9.00",
+        "max": "13.00"
+      },
+      "size": 92943092285,
+      "pkg": {
+        "url": "https://download.akirabox.com/uploads/users/AY2xm0Ao3RO1/coOZrp2bhnRFcnWsode-%5BPS4ID%5D-The.Last.of.Us.Part.2_CUSA10249_v1.00-PS4.pkg?access=AOhBHZ0t2byJWYkRmYvZDOhZHbs9mcpJGdsVWb&token=PzEhXy0lM1kwCRdFKAAdAEoOFEUxEkAkBRMGRVY-LSE3IENbVlVXKxJQXFtUTD4nUE8CAAM",
+        "sha256": "SHA256_PENDING"
+      },
+      "media": {
+        "icon": "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEim_D4wWYbM3FnJl5Lhwf9QqMqZXBe7LDJ5_F2nj86w6jXwMjirrH3fF6LLGt3WZ9cDZZoh00wIYNImGjSZjXFKCypTj5FUc_7Vbp9BRs3FPX56BaSqMQsqRtFduJfVR5pKuIeru9OOVgIlrRlTiRjkC3ceui5GahBh91oMSjNYqdAa_EM-wg4le0wDRLP6/w400-h225/The%20Last%20of%20Us%20Part%20II.jpg",
+        "background": ""
+      },
+      "screenshots": [],
+      "description": "The Last of Us Part II adalah sekuel yang sangat dinantikan dari game pemenang penghargaan, The Last of Us, yang dikembangkan oleh Naughty Dog untuk PlayStation 4. Dalam game ini, kamu akan melanjutkan perjalanan emosional dan mendalam di dunia pasca-apokaliptik yang penuh dengan ketegangan dan konflik.\n\nIkuti kisah Ellie, yang kini menjadi protagonis utama, saat ia menghadapi tantangan baru dan perjalanan emosional yang berat. Cerita ini menggali tema tentang balas dendam, pengampunan, dan kompleksitas moral, menjadikannya sebuah pengalaman naratif yang mendalam dan penuh emosi.",
+      "author": "Sony Interactive Entertainment",
+      "website": "",
+      "source": "",
+      "license": "Unknown",
+      "changelog": "",
+      "version_history": [],
+      "featured": false,
+      "downloads": 0,
+      "createdAt": "2026-02-06T15:27:13.918Z"
+    },
+    {
+      "id": "7",
+      "title": "Ghost of Tsushima",
+      "title_id": "EP9000-CUSA17280_00-GHOSTTSUSHIMAMAIN",
+      "type": "game",
+      "category": "games",
+      "version": "2.24",
+      "firmware": {
+        "min": "9.00",
+        "max": "13.00"
+      },
+      "size": 48651242045,
+      "pkg": {
+        "url": "https://download.akirabox.com/uploads/users/AY2xm0Ao3RO1/coY6liDDlmWHu9Lecde-%5BPS4ID%60%5D-Ghost.of.Tsushima_CUSA13323_FULLGAME_v2.24_%5B9.00-11.00%5D-PS4.pkg?access=QOhhDZws2cyJWYrR2dwI3bsl3c25mc2JWYsJTb&token=PzEhXy0lDilJJhoEFxVAGwJPJhgREgYdCQAtKDEyL0VXUkBYOyc7OCgmMyYhPhhGSlNGND9YQERUTENaSlFeKUkxIV9KEQUT",
+        "sha256": "SHA256_PENDING"
+      },
+      "media": {
+        "icon": "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg3h7JJSjS55AoXYnTAnG6BfATMPBa-p5q5yjGi42YRQsUJ2DTguJtlp1wPpIlKN_VTEmAX7uzd9j2453-QDZurglCSlevhfEecrbqKHHs2aze9WAKcnlJnKdCxGyGZIgLZ-Mkz5fbA6vMjb266_qs8d4VfvqmTuZQh9dPxD5MpLD201H3FvCj6944e6Mjg/w400-h229/G1.jpg",
+        "background": ""
+      },
+      "screenshots": [],
+      "description": "Ghost of Tsushima Director’s Cut adalah versi perluasan dari permainan aksi petualangan yang sangat dihargai, dirilis untuk PlayStation 4 dan PlayStation 5. Dikembangkan oleh Sucker Punch Productions dan dipublikasikan oleh Sony Interactive Entertainment, permainan ini menempatkan1 Player pemain dalam peran Jin Sakai, seorang samurai yang bertempur untuk melindungi pulau Tsushima dari invasi Mongol pada abad ke-13.",
+      "author": "Sucker Punch Productions",
+      "website": "",
+      "source": "",
+      "license": "Unknown",
+      "changelog": "",
+      "version_history": [],
+      "featured": false,
+      "downloads": 0,
+      "createdAt": "2026-02-06T09:53:53.918Z"
+    },
+    {
+      "id": "9",
+      "title": "Minecraft PS4 Edition",
+      "title_id": "EP1004-CUSA00744_00-MINECRAFTPS40001",
+      "type": "game",
+      "category": "games",
+      "version": "1.00",
+      "firmware": {
+        "min": "9.00",
+        "max": "13.00"
+      },
+      "size": 107374182,
+      "pkg": {
+        "url": "https://eeur1.akirabox.com/uploads/users/AY2xm0Ao3RO1/coNj1B2ssNUoil3Lade-%5BPS4ID%5D-minecraft.v1.00-00265.pkg?access=QOhxGZktGayZTY0QGawI2bytmN4kDd2J2ZsZTb",
+        "sha256": "SHA256_PENDING"
+      },
+      "media": {
+        "icon": "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEh_QYayD0v4CM_30PrN1iUZEZd5iCB9WXbkb5q4NFHvVgnxEUoAi6-c_KYjVnBXfs_Fhz9PeH87s8kWU5hOM6p0BYG-P-ndM_IC0zXtB57_hi7PZ7qDEH2DPU9En0IIeeT2x4Mb-6bgNkBNB_ZQH68ak3lQTqyFJ75LS1TAzf4yM1eNQcypShuLC-cB728x/w400-h215/Minecraft%20PlayStation%204%20Edition.jpg",
+        "background": ""
+      },
+      "screenshots": [],
+      "description": "Game sandbox legendaris. Bangun, tambang, dan bertahan hidup di dunia blok!",
+      "author": "Mojang Studios",
+      "website": "",
+      "source": "",
+      "license": "Unknown",
+      "changelog": "",
+      "version_history": [],
+      "featured": false,
+      "downloads": 0,
+      "createdAt": "2026-02-06T04:20:33.918Z"
+    },
+    {
+      "id": "10",
+      "title": "EA Sports FC 26",
+      "title_id": "EP0001-CUSA32278_00-FIFAFC24DELDX000",
+      "type": "game",
+      "category": "games",
+      "version": "1.0",
+      "firmware": {
+        "min": "9.00",
+        "max": "13.00"
+      },
+      "size": 15945066086,
+      "pkg": {
+        "url": "https://download.akirabox.com/uploads/users/AY2xm0Ao3RO1/cooXBSDu64iF4rxt6de-%5BPS4ID%5D-EA.SPORTS.FC.26_CUSA52342_v1.00_%5B12.50%5D_OPOISSO893.pkg?access=AOhxGZ3sWaydTY2R2d4kWe4wWczIXd0JGdshXb&token=PzEhXy0lM1khIFw4NC48IDdPNChKU1grJzQhKlFTXUBWPgRaSlFeKz9QQEVRUTMrKzE9IjcyIUxdUlwbDwY",
+        "sha256": "SHA256_PENDING"
+      },
+      "media": {
+        "icon": "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhfaOmGIyJ-s5pLu5OsW0WNb7UfD5AztLpk3QY_rxvjgRyZcIKq4Ah2Z_-WPw0rwbo8gmKfiek5FnI8YGXtwAgiIzImTZ7C5UCdSCq1jwjFDHP4YOtGRuuLy0BS2VmS7pzbcZq97Y2mYjpPKilvLDD7z_7xBilsbs_ccMQXyPFr6W500NtP8Fy6Bbzes1U5/w400-h225/EA%20Sports%20FC%2026.jpg",
+        "background": ""
+      },
+      "screenshots": [],
+      "description": "EA Sports FC 26 untuk PS4 menghadirkan pengalaman sepak bola yang lebih tajam berkat sejumlah penyempurnaan gameplay berdasarkan masukan komunitas. Kamu akan merasakan dribel yang lebih responsif, posisi AI pemain yang lebih pintar, dan reaksi kiper yang lebih alami sehingga pertandingan terasa lebih realistis.",
+      "author": "Electronic Arts",
+      "website": "",
+      "source": "",
+      "license": "Unknown",
+      "changelog": "",
+      "version_history": [],
+      "featured": false,
+      "downloads": 0,
+      "createdAt": "2026-02-06T01:33:53.918Z"
+    },
+    {
+      "id": "11",
+      "title": "Mortal Kombat 11",
+      "title_id": "EP1018-CUSA14335_00-MORTALKOMBAT1111",
+      "type": "game",
+      "category": "games",
+      "version": "1.00",
+      "firmware": {
+        "min": "9.00",
+        "max": "13.00"
+      },
+      "size": 39889508762,
+      "pkg": {
+        "url": "https://eeur1.akirabox.com/uploads/users/AY2xm0Ao3RO1/cozdGfz4p4EApEZesde-%5BPS4ID%5D-Mortal.Kombat.11.Ultimate-CUSA11379-EUR-Game-v1.00_%5B6.72%5D_OPOISSO893.pkg?access=wMhlGZ5tGeyZTYjRWYwEWe2kzbkBXdzIWYshWb",
+        "sha256": "SHA256_PENDING"
+      },
+      "media": {
+        "icon": "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjBOBOEuzXiygdDG33DAZ14ll9D1WHVbfUg4c2uLgCmTmuq_kBIWZVYepZMrvR3kkGO0risIOaNwlJCJTPGMTkk_llKGY3b-6WC0PZQ3Q3XqfZYduMu7ozscff5jsdOqkMhPEgw3Z3XJaJS8rXtK2b06vTRjA69UqoEMebeIYWECRlualf7EtU8nbWUO83q/w400-h220/k1.jpg",
+        "background": ""
+      },
+      "screenshots": [],
+      "description": "Mortal Kombat 11 Ultimate Edition adalah edisi khusus dari game pertarungan legendaris yang dirilis untuk PlayStation 4.\n\nMortal Kombat 11 Ultimate Edition adalah versi lengkap dan terbaru dari game pertarungan terkenal Mortal Kombat 11. Edisi ini mencakup semua konten tambahan dan ekspansi yang dirilis untuk game ini, menawarkan pengalaman bertarung yang lebih komprehensif dan mendalam.",
+      "author": "Warner Bros",
+      "website": "",
+      "source": "",
+      "license": "Unknown",
+      "changelog": "",
+      "version_history": [],
+      "featured": false,
+      "downloads": 0,
+      "createdAt": "2026-02-05T22:47:13.918Z"
+    },
+    {
+      "id": "12",
+      "title": "Resident Evil 2 Remake",
+      "title_id": "EP0102-CUSA14183_00-BH2REMASTER00000",
+      "type": "game",
+      "category": "games",
+      "version": "1.00",
+      "firmware": {
+        "min": "9.00",
+        "max": "13.00"
+      },
+      "size": 23203560817,
+      "pkg": {
+        "url": "https://download.akirabox.com/uploads/users/AY2xm0Ao3RO1/coN80EtQfUQQKzsuYde-%5BPS4ID%5D-Resident.Evil.2.v1.00-CUSA09171.pkg?access=gahZHZ0tWOyJTY3QmZjl2N0V3dxEmdyJGOsNWb&token=PzEhXy0lM1k2BAECAAQAAEokBAIIT1xaElBcW1RMLSE3IEJSVVZfWhQKFQ",
+        "sha256": "SHA256_PENDING"
+      },
+      "media": {
+        "icon": "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgqUOp8J8cPRRd_77Cx_mXocMDdjhYb1MlpvMxvpUjns5-rVc7PN3RPY1YFvYs_jimvT-bP_GRIM54B9RoFJwe8fLF2c0qgXqjqvYAq9U7qxVP_6lvVaJZcrRAc-eppsrOUX5nobKA_LNAEdqG2BMIuMmYU8o2BPOHt4I3qSx7_DhoyLRTdXhKYj4d5MsI8/w400-h225/Resident%20Evil%202%20Remake%20Deluxe%20Edition.png",
+        "background": ""
+      },
+      "screenshots": [],
+      "description": "Resident Evil 2 Remake Deluxe Edition membawa kembali pengalaman menegangkan dari game survival horror ikonik dengan grafis modern dan mekanisme gameplay yang diperbarui. Versi Deluxe Edition menawarkan lebih dari sekadar remaster; ini adalah pembaharuan yang menyegarkan dengan tambahan konten eksklusif yang memperkaya pengalaman bermain.",
+      "author": "Capcom",
+      "website": "",
+      "source": "",
+      "license": "Unknown",
+      "changelog": "",
+      "version_history": [],
+      "featured": false,
+      "downloads": 0,
+      "createdAt": "2026-02-05T20:00:33.918Z"
+    },
+    {
+      "id": "13",
+      "title": "Cyberpunk 2077",
+      "title_id": "EP4497-CUSA16512_00-CYBERPUNK2077000",
+      "type": "game",
+      "category": "games",
+      "version": "2.1",
+      "firmware": {
+        "min": "9.00",
+        "max": "13.00"
+      },
+      "size": 70877697802,
+      "pkg": {
+        "url": "https://eeur1.akirabox.com/uploads/users/AY2xm0Ao3RO1/co6jDfaGfGnq67bWede-%5BPS4ID%5D.cyb2k77.v1.61.merged-16579.pkg?access=gNhBDZptGOylTY0QWMjtGanRHN3YmdyJWbsdTb",
+        "sha256": "SHA256_PENDING"
+      },
+      "media": {
+        "icon": "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhtaec_nvWuhsCBFZvycYReqdX-Lvs440W55iXZJU7asv4wbVycCGcWMeRdIhgPksjNondjBTFgpIWdDGGFyAFfPE-7U2OKsxOAu6U7icwB4cUf-2cVLggsZkUYeBw_N1DafHXOBslN9oJJJ59j6aG8i9OBTX3FJhBnprnnkAhSUCX29M7OPb6Ph5ZHIVZ3/w400-h225/Cyberpunk%202077.jpg",
+        "background": ""
+      },
+      "screenshots": [],
+      "description": "RPG open-world di masa depan dystopia. Jadilah cyberpunk legendaris!",
+      "author": "CD Projekt Red",
+      "website": "",
+      "source": "",
+      "license": "Unknown",
+      "changelog": "",
+      "version_history": [],
+      "featured": false,
+      "downloads": 0,
+      "createdAt": "2026-02-05T17:13:53.918Z"
+    },
+    {
+      "id": "14",
+      "title": "PES SGR Patch Winter 2026",
+      "title_id": "EP0002-CUSA08283_00-MWII202300000000",
+      "type": "game",
+      "category": "games",
+      "version": "26.2",
+      "firmware": {
+        "min": "9.00",
+        "max": "13.00"
+      },
+      "size": 30494267802,
+      "pkg": {
+        "url": "https://eeur1.akirabox.com/uploads/users/AY2xm0Ao3RO1/co8njAV3CGeA290fVde-PES 2018 CUSA08283 SGR Patch Winter 2026 BaseGame.pkg?access=gdhZHZwsGeyZTY0QWe0MHaoNzal1mcnFDZtlXb",
+        "sha256": "SHA256_PENDING"
+      },
+      "media": {
+        "icon": "https://down-id.img.susercontent.com/file/id-11134207-8224z-ml0d2d5ckzd06e",
+        "background": ""
+      },
+      "screenshots": [],
+      "description": "SGR Patch PES 2018 Winter Season 2026 (untuk PS4 HEN) adalah modifikasi yang memperbarui PES 2018 base dengan konten musim dingin 2026. Fitur utamanya mencakup transfer pemain terbaru, pembaruan skuad, jersey tim terkini, serta kompetisi segar untuk menghadirkan pengalaman modern.",
+      "author": "Konami",
+      "website": "",
+      "source": "",
+      "license": "Unknown",
+      "changelog": "",
+      "version_history": [],
+      "featured": false,
+      "downloads": 19870,
+      "createdAt": "2026-02-05T14:27:13.918Z"
+    },
+    {
+      "id": "201",
+      "title": "PES 2026 - REV 2 Update",
+      "title_id": "EP9000-CUSA00207_00-PES2026UPDATE002",
+      "type": "game",
+      "category": "updates",
+      "version": "2.0",
+      "firmware": {
+        "min": "9.00",
+        "max": "13.00"
+      },
+      "size": 4448720998,
+      "pkg": {
+        "url": "https://download.akirabox.com/uploads/users/AY2xm0Ao3RO1/co9JVM7BGy6lBA3ROde-REV2%20PES%2026%20BITBOX%20PATCH.pkg?access=QehVDZ3tGNyFXYjRGezFTMyJmMqZmbvVDcsFTb&token=NiQkWUQxKydEU0RLJig6Nis5UjslNS08ShEZDA",
+        "sha256": "SHA256_PENDING"
+      },
+      "media": {
+        "icon": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTSnWPUdC9FSVy6WsmHaRTi1GFfPD9dtPg6rQ&s",
+        "background": ""
+      },
+      "screenshots": [],
+      "description": "Patch dan update terbaru untuk PES 2026. Fix bug dan peningkatan performa.",
+      "author": "Konami",
+      "website": "",
+      "source": "",
+      "license": "Unknown",
+      "changelog": "",
+      "version_history": [],
+      "featured": false,
+      "downloads": 0,
+      "createdAt": "2026-02-03T20:47:13.918Z"
+    },
+    {
+      "id": "203",
+      "title": "PES SGR Patch Winter 2026 - REV 0",
+      "title_id": "EP0002-CUSA08283_00",
+      "type": "game",
+      "category": "updates",
+      "version": "2.0",
+      "firmware": {
+        "min": "9.00",
+        "max": "13.00"
+      },
+      "size": 8804682956.8,
+      "pkg": {
+        "url": "https://eeur1.akirabox.com/uploads/users/AY2xm0Ao3RO1/coHjBe4d2Ds7AevFide-PES 2018 CUSA08283 SGR Patch Winter 2026 UpdateGame Rev.0.pkg?access=gahZGZ5t2Yy9WYoRGMwk3dxcTZqNjciFDatZXb",
+        "sha256": "SHA256_PENDING"
+      },
+      "media": {
+        "icon": "https://down-id.img.susercontent.com/file/id-11134207-8224z-ml0d2d5ckzd06e",
+        "background": ""
+      },
+      "screenshots": [],
+      "description": "Patch dan update terbaru untuk PES 2026. Fix bug dan peningkatan performa.",
+      "author": "Konami",
+      "website": "",
+      "source": "",
+      "license": "Unknown",
+      "changelog": "",
+      "version_history": [],
+      "featured": false,
+      "downloads": 0,
+      "createdAt": ""
+    },
+    {
+      "id": "202",
+      "title": "God of War - Update",
+      "title_id": "EP9000-CUSA07368_00-B00000000000000",
+      "type": "game",
+      "category": "updates",
+      "version": "6.05",
+      "firmware": {
+        "min": "9.00",
+        "max": "13.00"
+      },
+      "size": 25308094792,
+      "pkg": {
+        "url": "https://download.akirabox.com/uploads/users/AY2xm0Ao3RO1/coc6JogHtLCS8k5TOde-%5BPS4ID%5D-God.of.War.Ragnarok_CUSA34386_v6.05_%5B9.00%5D-PS4.pkg?access=gahZDZntGeyFXYhRWZjZ2MwF2ZllncoJ2ZsVWb&token=PzEhXy0lM1kjDhZFCwdAIwUTXDkFBgAVFg4ZNCc0PTVXVUFTUj4YQkpRRzQ_WEBEVDxfOzdVQAQPBg",
+        "sha256": "SHA256_PENDING"
+      },
+      "media": {
+        "icon": "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEi-ce5Kb_RyDM7i640rvze82ntIGugPHxtaxsxuZ0gh5Ws4NVd-DBmvzaUptEkD7UGQUXS1TqyLfXMTkZQppytk317NzjXmAOglkXKVeIX06qn9PkGYcjRYBo_4Hq6mCGfW3D6gXxkXmHZYRYe93Fsc25OxLR84zmD7_K7D_ptufef73GoiVpsmRxk0SZI-/w400-h221/g1.jpg",
+        "background": ""
+      },
+      "screenshots": [],
+      "description": "Update 6.05 menambahkan New Game+ dan Photo Mode!",
+      "author": "Sony Interactive Entertainment",
+      "website": "",
+      "source": "",
+      "license": "Unknown",
+      "changelog": "",
+      "version_history": [],
+      "featured": false,
+      "downloads": 0,
+      "createdAt": "2026-02-03T18:00:33.918Z"
+    },
+    {
+      "id": "307",
+      "title": "The Last of Us Part II - Update",
+      "title_id": "GAME307",
+      "type": "game",
+      "category": "updates",
+      "version": "1.09",
+      "firmware": {
+        "min": "9.00",
+        "max": "13.00"
+      },
+      "size": 48962627174,
+      "pkg": {
+        "url": "https://download.akirabox.com/uploads/users/AY2xm0Ao3RO1/codg2Z2AHeBbC21jbde-hako.tloupii.v1.09.Update-10249.rar?access=QZhlGZ3tGNyRTYtRWcwcjMpVTeyJjcyJGesBXb&token=DAAZBEoVAhsRERsCShdfWlRYXD4UBQ8AAUxDW1ZVV1oWAAA",
+        "sha256": "SHA256_PENDING"
+      },
+      "media": {
+        "icon": "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEim_D4wWYbM3FnJl5Lhwf9QqMqZXBe7LDJ5_F2nj86w6jXwMjirrH3fF6LLGt3WZ9cDZZoh00wIYNImGjSZjXFKCypTj5FUc_7Vbp9BRs3FPX56BaSqMQsqRtFduJfVR5pKuIeru9OOVgIlrRlTiRjkC3ceui5GahBh91oMSjNYqdAa_EM-wg4le0wDRLP6/w400-h225/The%20Last%20of%20Us%20Part%20II.jpg",
+        "background": ""
+      },
+      "screenshots": [],
+      "description": "",
+      "author": "Sony Interactive Entertainment",
+      "website": "",
+      "source": "",
+      "license": "Unknown",
+      "changelog": "",
+      "version_history": [],
+      "featured": false,
+      "downloads": 0,
+      "createdAt": "2026-02-07T04:02:04.486Z"
+    },
+    {
+      "id": "308",
+      "title": "GTA V - Grand Theft Auto V",
+      "title_id": "GAME308",
+      "type": "game",
+      "category": "updates",
+      "version": "1.52",
+      "firmware": {
+        "min": "9.00",
+        "max": "13.00"
+      },
+      "size": 48500918190,
+      "pkg": {
+        "url": "https://eeur1.akirabox.com/uploads/users/AY2xm0Ao3RO1/cogObqdAKGZIoIXt8de-%5BPS4ID%5D-Grand.Theft.Auto.V.Update.v1.52-CUSA00411.pkg?access=AZhtGZ0t2NyVXYxRWZ3J3Y2VmcxkncyJWMshTb",
+        "sha256": "SHA256_PENDING"
+      },
+      "media": {
+        "icon": "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEi7qkEUE4EX4FL_ArO5BrmUWRZHOyfW_nBuUJZr4MUvBGPw27swkk6mICitdXzG7EC5NEayg9ag_djWHOzOh4mcDx4jQVDimKxxhal9kwvrm0tEdqCEmgf9D2YCwEVnrRoeM6zzkUU7wgVs7JAXJRKjFWTHovL8rR2HvAhRmpscGRYzt94flSkIc-iZE1qv/w400-h224/g1.jpg",
+        "background": ""
+      },
+      "screenshots": [],
+      "description": "Grand Theft Auto V adalah salah satu game aksi-petualangan terpopuler yang dirilis oleh Rockstar Games.Grand Theft Auto V adalah game aksi-petualangan yang menawarkan pengalaman dunia terbuka yang mendalam dan luas. Dalam game ini, Anda akan menjelajahi kota Los Santos yang kaya dengan berbagai aktivitas dan misi, serta mengikuti kisah tiga karakter yang saling terhubung dalam dunia kriminal.\n\nIkuti kisah tiga protagonis utama — Michael De Santa, Franklin Clinton, dan Trevor Philips — yang masing-masing memiliki latar belakang dan motivasi yang berbeda. Cerita ini terjalin dalam berbagai misi yang menarik dan penuh aksi.",
+      "author": "Rockstar Games",
+      "website": "",
+      "source": "",
+      "license": "Unknown",
+      "changelog": "",
+      "version_history": [],
+      "featured": false,
+      "downloads": 0,
+      "createdAt": "2026-02-07T01:15:24.486Z"
     }
   ]
 }
