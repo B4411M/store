@@ -5,6 +5,7 @@
 
 #include "storage_manager.h"
 #include "utils/log.h"
+#include <stdio.h>
 #include <sys/statvfs.h>
 #include <string.h>
 

@@ -15,7 +15,7 @@ permissions:
   contents: write
 
 env:
-  OPENORBIS_TOOLCHAIN: /opt/openorbis/toolchain.cmake
+  OO_PS4_TOOLCHAIN: /opt/openorbis
 
 jobs:
   build-toolchain:
@@ -65,18 +65,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Use authenticated clone to avoid rate limits
-          git clone --recursive --depth 1 https://x-access-token:${GITHUB_TOKEN}@github.com/OpenOrbis/OpenOrbis.git /tmp/OpenOrbis
-          cd /tmp/OpenOrbis
-          # Build with limited parallelism to avoid OOM
-          ./build-toolchain.sh 2>&1 | tail -50
-          echo "OPENORBIS_TOOLCHAIN=/opt/openorbis/toolchain.cmake" >> $GITHUB_ENV
+          curl -fL https://github.com/OpenOrbis/OpenOrbis-PS4-Toolchain/releases/download/v0.5.4/toolchain-llvm-18.tar.gz -o /tmp/openorbis.tar.gz
+          mkdir -p /opt/openorbis
+          tar -xzf /tmp/openorbis.tar.gz -C /opt/openorbis --strip-components=2 OpenOrbis/PS4Toolchain
 
       - name: Verify Toolchain
         run: |
-          if [ -f "/opt/openorbis/toolchain.cmake" ]; then
-            echo "✅ Toolchain ready at /opt/openorbis/toolchain.cmake"
-            ls -la /opt/openorbis/bin/ | head -20
+          if [ -x "/opt/openorbis/bin/linux/create-fself" ]; then
+            echo "✅ OpenOrbis toolchain ready at /opt/openorbis"
+            ls -la /opt/openorbis/bin/linux/ | head -20
           else
             echo "❌ Toolchain not found"
             exit 1
@@ -140,11 +137,20 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Restore OpenOrbis Toolchain
+        uses: actions/cache@v4
+        with:
+          path: /opt/openorbis
+          key: openorbis-toolchain-${{ runner.os }}-${{ hashFiles('native/CMakeLists.txt') }}
+          restore-keys: |
+            openorbis-toolchain-${{ runner.os }}-
+
       - name: Install Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
             cmake make git curl \
+            clang lld \
             libcurl4-openssl-dev \
             libmbedtls-dev libmbedx509-dev libmbedcrypto-dev \
             python3 pkg-config \
@@ -152,14 +158,14 @@ jobs:
 
       - name: Setup Toolchain Environment
         run: |
-          echo "OPENORBIS_TOOLCHAIN=/opt/openorbis/toolchain.cmake" >> $GITHUB_ENV
-          export OPENORBIS_TOOLCHAIN=/opt/openorbis/toolchain.cmake
+          echo "OO_PS4_TOOLCHAIN=/opt/openorbis" >> $GITHUB_ENV
+          export OO_PS4_TOOLCHAIN=/opt/openorbis
 
       - name: Verify Toolchain
         run: |
-          if [ ! -f "$OPENORBIS_TOOLCHAIN" ]; then
-            echo "❌ Toolchain not found at $OPENORBIS_TOOLCHAIN"
-            find /opt -name "toolchain.cmake" 2>/dev/null || true
+          if [ ! -x "$OO_PS4_TOOLCHAIN/bin/linux/create-fself" ]; then
+            echo "❌ OpenOrbis toolchain not found at $OO_PS4_TOOLCHAIN"
+            find /opt -name "create-fself" 2>/dev/null || true
             exit 1
           fi
           echo "✅ Toolchain found"

@@ -43,7 +43,7 @@ struct DownloadItem {
 };
 
 // Progress callback
-typedef void (*DownloadProgressCallback)(DownloadItem* item, void* user_data);
+typedef void (*DownloadManagerProgressCallback)(DownloadItem* item, void* user_data);
 
 // Create download manager
 DownloadManager* download_manager_create(void);
@@ -78,7 +78,7 @@ void download_manager_poll(DownloadManager* mgr);
 
 // Set progress callback
 void download_manager_set_progress_callback(DownloadManager* mgr, 
-                                            DownloadProgressCallback cb, void* user_data);
+                                            DownloadManagerProgressCallback cb, void* user_data);
 
 // Render progress overlay
 void download_manager_render_progress(DownloadManager* mgr);

@@ -15,7 +15,7 @@
 struct DownloadManager {
     DownloadItem* items[MAX_DOWNLOADS];
     int item_count;
-    DownloadProgressCallback progress_cb;
+    DownloadManagerProgressCallback progress_cb;
     void* progress_user_data;
     pthread_mutex_t mutex;
     bool running;
@@ -328,7 +328,7 @@ void download_manager_poll(DownloadManager* mgr) {
 }
 
 void download_manager_set_progress_callback(DownloadManager* mgr, 
-                                            DownloadProgressCallback cb, void* user_data) {
+                                            DownloadManagerProgressCallback cb, void* user_data) {
     if (!mgr) return;
     mgr->progress_cb = cb;
     mgr->progress_user_data = user_data;

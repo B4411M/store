@@ -6,6 +6,8 @@
 #ifndef STORAGE_MANAGER_H
 #define STORAGE_MANAGER_H
 
+#include <stddef.h>
+
 #include <stdbool.h>
 
 typedef struct {

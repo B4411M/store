@@ -1,206 +1,113 @@
-#!/bin/bash
-# B41M HEN STORE - Build Script for Native PS4 Application
-# Run on Linux with OpenOrbis toolchain (WSL2, native Linux, or CI)
+#!/bin/sh
 
-set -e
+set -eu
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
-
-# Configuration
-PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BUILD_DIR="${PROJECT_DIR}/build"
-PKG_DIR="${BUILD_DIR}/pkg"
-TOOLCHAIN_FILE="${OPENORBIS_TOOLCHAIN:-/opt/openorbis/toolchain.cmake}"
-
-echo -e "${BLUE}======================================${NC}"
-echo -e "${BLUE}  B41M HEN STORE - Native PS4 Build  ${NC}"
-echo -e "${BLUE}======================================${NC}"
-echo ""
-
-# Function to print step
-step() {
-    echo -e "${GREEN}[STEP]${NC} $1"
-}
-
-warn() {
-    echo -e "${YELLOW}[WARN]${NC} $1"
-}
-
-error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-}
-
-# Check for toolchain
-if [ ! -f "$TOOLCHAIN_FILE" ]; then
-    error "Toolchain file not found at $TOOLCHAIN_FILE"
-    echo ""
-    echo "Install OpenOrbis toolchain:"
-    echo "  git clone --recursive https://github.com/OpenOrbis/OpenOrbis.git"
-    echo "  cd OpenOrbis && ./build-toolchain.sh"
-    echo ""
-    echo "Then set environment variable:"
-    echo "  export OPENORBIS_TOOLCHAIN=/opt/openorbis/toolchain.cmake"
-    echo "  echo 'export OPENORBIS_TOOLCHAIN=/opt/openorbis/toolchain.cmake' >> ~/.bashrc"
-    exit 1
+PROJECT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+BUILD_DIR="$PROJECT_DIR/build"
+PKG_DIR="$BUILD_DIR/pkg"
+TOOLCHAIN=${OO_PS4_TOOLCHAIN:-${OPENORBIS_TOOLCHAIN:-$HOME/OpenOrbis}}
+if [ -f "$TOOLCHAIN" ]; then
+    TOOLCHAIN=$(dirname "$TOOLCHAIN")
 fi
 
-step "Toolchain found: $TOOLCHAIN_FILE"
+case "$(uname -s)" in
+    Darwin)
+        LLVM_PREFIX=${LLVM_PREFIX:-/usr/local/opt/llvm@18/bin}
+        PLATFORM_BIN=macos
+        FSELF=create-fself-macos
+        ;;
+    *)
+        LLVM_PREFIX=${LLVM_PREFIX:-}
+        PLATFORM_BIN=linux
+        FSELF=create-fself
+        ;;
+esac
 
-# Clean build
-if [ "$1" == "clean" ]; then
-    step "Cleaning build directory..."
-    rm -rf "$BUILD_DIR" "$PKG_DIR"
+CC=${CC:-${LLVM_PREFIX:+$LLVM_PREFIX/}clang}
+LD=${LD:-${LLVM_PREFIX:+$LLVM_PREFIX/}ld.lld}
+CREATE_FSELF="$TOOLCHAIN/bin/$PLATFORM_BIN/$FSELF"
+CREATE_GP4="$TOOLCHAIN/bin/$PLATFORM_BIN/create-gp4"
+PKG_TOOL="$TOOLCHAIN/bin/$PLATFORM_BIN/PkgTool.Core"
+
+if [ "${1:-}" = clean ]; then
+    rm -rf "$BUILD_DIR"
     exit 0
 fi
 
-# Check for orbis-pub-gen
-if ! command -v orbis-pub-gen &> /dev/null; then
-    warn "orbis-pub-gen not found in PATH"
-    warn "PKG creation will be skipped (only eboot.bin will be built)"
-    warn "Install from: https://github.com/OpenOrbis/orbis-pub-gen"
-    ORBIS_PUB_GEN=""
-else
-    ORBIS_PUB_GEN="orbis-pub-gen"
-    step "orbis-pub-gen found: $(which orbis-pub-gen)"
-fi
-
-# Create build directory
-step "Creating build directory..."
-mkdir -p "$BUILD_DIR"
-cd "$BUILD_DIR"
-
-# Configure with CMake
-step "Configuring with CMake..."
-cmake -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN_FILE" \
-      -DCMAKE_BUILD_TYPE=Release \
-      "$PROJECT_DIR"
-
-if [ $? -ne 0 ]; then
-    error "CMake configuration failed!"
-    exit 1
-fi
-
-# Build
-step "Building application..."
-make -j$(nproc)
-
-if [ $? -ne 0 ]; then
-    error "Build failed!"
-    exit 1
-fi
-
-step "Build successful!"
-
-# Check if eboot.bin was created
-EBOOT_PATH="${BUILD_DIR}/eboot.bin"
-if [ ! -f "$EBOOT_PATH" ]; then
-    error "eboot.bin not found at expected location: $EBOOT_PATH"
-    echo "Checking build directory contents:"
-    find "$BUILD_DIR" -type f -name "*.bin" -o -name "*.elf" -o -name "*.self" 2>/dev/null
-    exit 1
-fi
-
-step "Found eboot.bin ($(stat -c%s "$EBOOT_PATH") bytes)"
-
-# Create PKG if orbis-pub-gen is available
-if [ -n "$ORBIS_PUB_GEN" ]; then
-    step "Creating PKG with orbis-pub-gen..."
-    
-    # Create PKG directory structure
-    rm -rf "$PKG_DIR"
-    mkdir -p "$PKG_DIR/sce_sys"
-    
-    # Copy eboot.bin
-    cp "$EBOOT_PATH" "$PKG_DIR/eboot.bin"
-    
-    # Copy param.sfo
-    if [ -f "${PROJECT_DIR}/assets/param.sfo" ]; then
-        cp "${PROJECT_DIR}/assets/param.sfo" "$PKG_DIR/sce_sys/param.sfo"
-        step "Copied param.sfo"
-    else
-        error "param.sfo not found in assets/"
+for required in "$CC" "$LD" "$CREATE_FSELF" "$CREATE_GP4" "$PKG_TOOL" "$TOOLCHAIN/link.x" "$TOOLCHAIN/lib/crt1.o"; do
+    if [ ! -x "$required" ] && [ ! -f "$required" ]; then
+        echo "Missing OpenOrbis build dependency: $required" >&2
         exit 1
     fi
-    
-    # Copy icon0.png
-    if [ -f "${PROJECT_DIR}/assets/icon0.png" ]; then
-        cp "${PROJECT_DIR}/assets/icon0.png" "$PKG_DIR/sce_sys/icon0.png"
-        step "Copied icon0.png"
-    elif [ -f "${PROJECT_DIR}/assets/icon.png" ]; then
-        cp "${PROJECT_DIR}/assets/icon.png" "$PKG_DIR/sce_sys/icon0.png"
-        step "Copied icon.png as icon0.png"
-    else
-        warn "icon0.png not found, PKG may not display icon"
-    fi
-    
-    # Copy pic0.png (background)
-    if [ -f "${PROJECT_DIR}/assets/pic0.png" ]; then
-        cp "${PROJECT_DIR}/assets/pic0.png" "$PKG_DIR/sce_sys/pic0.png"
-        step "Copied pic0.png"
-    elif [ -f "${PROJECT_DIR}/assets/background.png" ]; then
-        cp "${PROJECT_DIR}/assets/background.png" "$PKG_DIR/sce_sys/pic0.png"
-        step "Copied background.png as pic0.png"
-    else
-        warn "pic0.png not found, PKG may not display background"
-    fi
-    
-    # Create PKG using GP4 project file
-    GP4_FILE="${PROJECT_DIR}/B41M_HEN_STORE.gp4"
-    if [ -f "$GP4_FILE" ]; then
-        step "Using GP4 project: $GP4_FILE"
-        cd "$PKG_DIR"
-        "$ORBIS_PUB_GEN" --gp4 "$GP4_FILE" --pkg "${BUILD_DIR}/B41M_HEN_STORE.pkg"
-    else
-        step "Using direct PKG creation"
-        cd "$PKG_DIR"
-        "$ORBIS_PUB_GEN" --pkg "${BUILD_DIR}/B41M_HEN_STORE.pkg" .
-    fi
-    
-    if [ $? -eq 0 ] && [ -f "${BUILD_DIR}/B41M_HEN_STORE.pkg" ]; then
-        PKG_SIZE=$(stat -c%s "${BUILD_DIR}/B41M_HEN_STORE.pkg")
-        step "PKG created successfully!"
-        echo -e "${GREEN}  Size: $(numfmt --to=iec $PKG_SIZE)${NC}"
-        echo -e "${GREEN}  Path: ${BUILD_DIR}/B41M_HEN_STORE.pkg${NC}"
-    else
-        error "PKG creation failed!"
-        exit 1
-    fi
+done
+
+rm -rf "$BUILD_DIR"
+mkdir -p "$BUILD_DIR/obj" "$PKG_DIR/sce_sys"
+
+CFLAGS="--target=x86_64-pc-freebsd12-elf -DSTORE_PS4 -fPIC -funwind-tables -I$TOOLCHAIN/include -I$TOOLCHAIN/include/c++/v1 -I$PROJECT_DIR/include"
+
+sources="
+src/main.c
+src/storage_manager.c
+src/ui/input.c
+src/ui/render.c
+src/ui/webview.c
+src/utils/config.c
+src/utils/log.c
+src/ps4_compat.c
+"
+
+objects=""
+for source_file in $sources; do
+    object_file="$BUILD_DIR/obj/$(basename "${source_file%.c}.o")"
+    "$CC" $CFLAGS -c "$PROJECT_DIR/$source_file" -o "$object_file"
+    objects="$objects $object_file"
+done
+
+"$LD" -m elf_x86_64 -pie --script "$TOOLCHAIN/link.x" --eh-frame-hdr \
+    -L"$TOOLCHAIN/lib" -lc -lkernel -lc++ \
+    -o "$BUILD_DIR/b41m_hen_store.elf" "$TOOLCHAIN/lib/crt1.o" $objects
+
+"$CREATE_FSELF" \
+    -in="$BUILD_DIR/b41m_hen_store.elf" \
+    -out="$BUILD_DIR/b41m_hen_store.oelf" \
+    --eboot "$BUILD_DIR/eboot.bin" \
+    --paid 0x3800000000000011
+
+cp "$BUILD_DIR/eboot.bin" "$PKG_DIR/eboot.bin"
+"$PKG_TOOL" sfo_new "$PKG_DIR/sce_sys/param.sfo"
+"$PKG_TOOL" sfo_setentry "$PKG_DIR/sce_sys/param.sfo" APP_TYPE --type Integer --maxsize 4 --value 1
+"$PKG_TOOL" sfo_setentry "$PKG_DIR/sce_sys/param.sfo" APP_VER --type Utf8 --maxsize 8 --value 01.00
+"$PKG_TOOL" sfo_setentry "$PKG_DIR/sce_sys/param.sfo" ATTRIBUTE --type Integer --maxsize 4 --value 0
+"$PKG_TOOL" sfo_setentry "$PKG_DIR/sce_sys/param.sfo" CATEGORY --type Utf8 --maxsize 4 --value gd
+"$PKG_TOOL" sfo_setentry "$PKG_DIR/sce_sys/param.sfo" CONTENT_ID --type Utf8 --maxsize 48 --value UP0000-B41MHEN01_00-0000000000000000
+"$PKG_TOOL" sfo_setentry "$PKG_DIR/sce_sys/param.sfo" DOWNLOAD_DATA_SIZE --type Integer --maxsize 4 --value 0
+"$PKG_TOOL" sfo_setentry "$PKG_DIR/sce_sys/param.sfo" SYSTEM_VER --type Integer --maxsize 4 --value 0
+"$PKG_TOOL" sfo_setentry "$PKG_DIR/sce_sys/param.sfo" TITLE --type Utf8 --maxsize 128 --value "B41M HEN STORE"
+"$PKG_TOOL" sfo_setentry "$PKG_DIR/sce_sys/param.sfo" TITLE_ID --type Utf8 --maxsize 12 --value B41MHEN01
+"$PKG_TOOL" sfo_setentry "$PKG_DIR/sce_sys/param.sfo" VERSION --type Utf8 --maxsize 8 --value 01.00
+if [ -f "$PROJECT_DIR/assets/icon0.png" ]; then
+    cp "$PROJECT_DIR/assets/icon0.png" "$PKG_DIR/sce_sys/icon0.png"
 else
-    warn "Skipping PKG creation (orbis-pub-gen not available)"
-    warn "Install orbis-pub-gen to create installable PKG"
+    cp "$PROJECT_DIR/assets/icon.png" "$PKG_DIR/sce_sys/icon0.png"
+fi
+if [ -f "$PROJECT_DIR/assets/pic0.png" ]; then
+    cp "$PROJECT_DIR/assets/pic0.png" "$PKG_DIR/sce_sys/pic0.png"
+elif [ -f "$PROJECT_DIR/assets/background.png" ]; then
+    cp "$PROJECT_DIR/assets/background.png" "$PKG_DIR/sce_sys/pic0.png"
 fi
 
-# Create fake PKG for testing (using orbis-pub-cmd if available)
-if command -v orbis-pub-cmd &> /dev/null; then
-    step "Creating fake PKG with orbis-pub-cmd..."
-    orbis-pub-cmd pkg_create "${BUILD_DIR}/B41M_HEN_STORE_Fake.pkg" "$PKG_DIR" 2>/dev/null || true
-    if [ -f "${BUILD_DIR}/B41M_HEN_STORE_Fake.pkg" ]; then
-        step "Fake PKG also created: ${BUILD_DIR}/B41M_HEN_STORE_Fake.pkg"
-    fi
+cd "$PKG_DIR"
+"$CREATE_GP4" -out B41M_HEN_STORE.gp4 \
+    --content-id=UP0000-B41MHEN01_00-0000000000000000 \
+    --files "eboot.bin sce_sys/param.sfo sce_sys/icon0.png sce_sys/pic0.png"
+"$PKG_TOOL" pkg_build B41M_HEN_STORE.gp4 .
+
+PKG_OUTPUT="$PKG_DIR/UP0000-B41MHEN01_00-0000000000000000.pkg"
+if [ ! -f "$PKG_OUTPUT" ]; then
+    echo "PKG creation did not produce $PKG_OUTPUT" >&2
+    exit 1
 fi
 
-echo ""
-echo -e "${BLUE}======================================${NC}"
-echo -e "${GREEN}  BUILD COMPLETE!${NC}"
-echo -e "${BLUE}======================================${NC}"
-echo ""
-echo -e "Output files:"
-echo -e "  ${GREEN}eboot.bin${NC}     : ${BUILD_DIR}/eboot.bin"
-if [ -f "${BUILD_DIR}/B41M_HEN_STORE.pkg" ]; then
-    echo -e "  ${GREEN}PKG (official)${NC}: ${BUILD_DIR}/B41M_HEN_STORE.pkg"
-fi
-if [ -f "${BUILD_DIR}/B41M_HEN_STORE_Fake.pkg" ]; then
-    echo -e "  ${GREEN}PKG (fake)${NC}    : ${BUILD_DIR}/B41M_HEN_STORE_Fake.pkg"
-fi
-echo ""
-echo -e "${YELLOW}Next steps:${NC}"
-echo -e "  1. Copy PKG to USB drive or host on web server"
-echo -e "  2. On PS4 with GoldHEN: Install via Package Installer"
-echo -e "  3. Launch 'B41M HEN STORE' from dashboard"
-echo -e "  4. Ensure GoldHEN is running for download/install features"
-echo ""
+cp "$PKG_OUTPUT" "$BUILD_DIR/B41M_HEN_STORE.pkg"
+echo "PKG created: $BUILD_DIR/B41M_HEN_STORE.pkg"

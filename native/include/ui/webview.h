@@ -6,6 +6,8 @@
 #ifndef WEBVIEW_H
 #define WEBVIEW_H
 
+#include <stdbool.h>
+
 typedef struct WebView WebView;
 
 // Create webview

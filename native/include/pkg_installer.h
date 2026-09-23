@@ -6,6 +6,8 @@
 #ifndef PKG_INSTALLER_H
 #define PKG_INSTALLER_H
 
+#include <stddef.h>
+
 #include <stdbool.h>
 
 typedef struct PKGInstaller PKGInstaller;
