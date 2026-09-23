@@ -1,6 +1,6 @@
 /**
  * PS4 HEN Store - Enhanced Download Manager
- * Handles PKG downloads with progress tracking, queue management, and auto-install
+ * Handles PKG downloads with progress tracking, queue management, SHA256 verification, and storage management
  */
 
 class DownloadManager {
@@ -25,8 +25,38 @@ class DownloadManager {
         this.loadFromStorage();
     }
 
+    // ========== STORAGE MANAGEMENT ==========
+    async checkStorageRequired(requiredBytes) {
+        try {
+            // Try to use Storage API if available
+            if ('storage' in navigator && 'estimate' in navigator.storage) {
+                const estimate = await navigator.storage.estimate();
+                const availableSpace = (estimate.quota || 0) - (estimate.usage || 0);
+                const requiredWithBuffer = requiredBytes * 1.1; // 10% buffer
+                
+                return {
+                    hasSpace: availableSpace >= requiredWithBuffer,
+                    availableSpace: availableSpace,
+                    requiredSpace: requiredWithBuffer,
+                    requiredBytes: requiredBytes
+                };
+            }
+        } catch (e) {
+            console.warn('Storage API not available:', e);
+        }
+        
+        // Fallback: assume enough space (can't check)
+        return {
+            hasSpace: true,
+            availableSpace: -1,
+            requiredSpace: requiredBytes * 1.1,
+            requiredBytes: requiredBytes,
+            unknown: true
+        };
+    }
+
     // ========== ADD DOWNLOAD ==========
-    async addDownload(url, filename, title) {
+    async addDownload(url, filename, title, options = {}) {
         if (!url || !this.isValidUrl(url)) {
             this.app.showToast('URL tidak valid: ' + url, 'error');
             return false;
@@ -39,6 +69,22 @@ class DownloadManager {
             return false;
         }
 
+        const expectedSize = options.size || 0;
+        const expectedSha256 = options.sha256 || null;
+
+        // Check storage before adding to queue
+        if (expectedSize > 0) {
+            const storageCheck = await this.checkStorageRequired(expectedSize);
+            if (!storageCheck.hasSpace && !storageCheck.unknown) {
+                this.app.showToast(
+                    `Ruang tidak cukup! Dibutuhkan: ${this.formatSize(storageCheck.requiredSpace)}, ` +
+                    `Tersedia: ${this.formatSize(storageCheck.availableSpace)}`, 
+                    'error'
+                );
+                return false;
+            }
+        }
+
         const item = {
             id: Date.now(),
             url: url,
@@ -47,7 +93,8 @@ class DownloadManager {
             status: 'pending',
             progress: 0,
             downloadedBytes: 0,
-            totalBytes: 0,
+            totalBytes: expectedSize,
+            expectedSha256: expectedSha256,
             speed: 0,
             eta: 0,
             addedAt: new Date().toISOString(),
@@ -65,6 +112,54 @@ class DownloadManager {
         }
 
         return true;
+    }
+
+    // ========== DOWNLOAD TO PS4 NOTIFICATIONS ==========
+    /**
+     * Send download directly to PS4 system notifications via GoldHEN
+     * This bypasses browser download and uses PS4's native download manager
+     */
+    async downloadToPS4Notifications(url, filename, title, options = {}) {
+        if (!this.app.isPS4) {
+            this.app.showToast('Demo Mode: Download ke notifikasi PS4 hanya di PS4 asli', 'info');
+            return { success: true, simulated: true };
+        }
+
+        this.app.showToast('Mengirim download ke notifikasi PS4...', 'info');
+
+        try {
+            // Use PKG Installer's method to send to PS4 notifications
+            const result = await this.app.pkgInstaller.downloadToPS4Notifications(url, title, filename);
+            
+            if (result.success) {
+                // Add to history
+                this.app.addToDownloadHistory({
+                    title_id: options.titleId || '',
+                    title: title,
+                    version: options.version || '1.0',
+                    size: options.size || 0,
+                    category: options.category || 'game'
+                });
+                
+                // Mark as installed if it's an install request
+                if (options.autoInstall) {
+                    const catalog = this.app.getGameCatalog();
+                    const game = catalog.find(g => g.title === title);
+                    if (game) {
+                        this.app.markAsInstalled(game);
+                    }
+                }
+                
+                this.app.showToast('Download muncul di notifikasi PS4!', 'success');
+                return { success: true };
+            } else {
+                throw new Error(result.error || 'Failed to send to PS4 notifications');
+            }
+        } catch (error) {
+            console.error('PS4 notification download failed:', error);
+            this.app.showToast('Gagal kirim ke notifikasi PS4: ' + error.message, 'error');
+            return { success: false, error: error.message };
+        }
     }
 
     isValidUrl(string) {
@@ -189,6 +284,26 @@ class DownloadManager {
         item.downloadedUrl = URL.createObjectURL(blob);
         item.progress = 100;
 
+        // Verify SHA256 if expected hash provided
+        if (item.expectedSha256) {
+            this.updateProgressUI({ ...item, progress: 100 }); // Show verifying status
+            const progressStatus = document.getElementById('progress-status');
+            if (progressStatus) progressStatus.textContent = 'Memverifikasi SHA256...';
+            
+            const verification = await SHA256Util.verifyHash(blob, item.expectedSha256);
+            item.sha256Verified = verification.valid;
+            item.actualSha256 = verification.actual;
+            
+            if (!verification.valid) {
+                // Clean up
+                URL.revokeObjectURL(item.downloadedUrl);
+                item.downloadedBlob = null;
+                throw new Error(`SHA256 mismatch! Expected: ${verification.expected}, Got: ${verification.actual}`);
+            }
+            
+            this.app.showToast('SHA256 verified successfully!', 'success');
+        }
+
         this.updateProgressUI(item);
     }
 
@@ -258,6 +373,12 @@ class DownloadManager {
     async autoInstall(item) {
         try {
             if (item.downloadedBlob) {
+                // Check SHA256 verification if hash was provided
+                if (item.expectedSha256 && !item.sha256Verified) {
+                    this.app.showToast('SHA256 tidak valid, install dibatalkan', 'error');
+                    return;
+                }
+
                 this.app.showToast('Memulai install: ' + item.title, 'info');
                 
                 const result = await this.app.pkgInstaller.installFromBlob(
@@ -268,6 +389,14 @@ class DownloadManager {
 
                 if (result.success) {
                     this.app.showToast('Install selesai: ' + item.title, 'success');
+                    
+                    // Mark as installed
+                    const catalog = this.app.getGameCatalog();
+                    const game = catalog.find(g => g.title === item.title);
+                    if (game) {
+                        this.app.markAsInstalled(game);
+                        this.app.addToDownloadHistory(game);
+                    }
                     
                     // Show open button
                     const openGameBtn = document.getElementById('open-game-btn');

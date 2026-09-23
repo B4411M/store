@@ -21,7 +21,7 @@
                     <span class="store-badge">B41M - HEN STORE</span>
                 </div>
                 
-                <nav class="main-nav">
+<nav class="main-nav">
                     <a href="#" class="nav-item active" data-category="all">
                         <span class="nav-icon">🏠</span>
                         <span>Beranda</span>
@@ -30,9 +30,21 @@
                         <span class="nav-icon">🎮</span>
                         <span>Game</span>
                     </a>
+                    <a href="#" class="nav-item" data-category="homebrew">
+                        <span class="nav-icon">🛠️</span>
+                        <span>Homebrew</span>
+                    </a>
                     <a href="#" class="nav-item" data-category="apps">
                         <span class="nav-icon">📱</span>
                         <span>Aplikasi</span>
+                    </a>
+                    <a href="#" class="nav-item" data-category="tools">
+                        <span class="nav-icon">🔧</span>
+                        <span>Tools</span>
+                    </a>
+                    <a href="#" class="nav-item" data-category="emulators">
+                        <span class="nav-icon">🕹️</span>
+                        <span>Emulator</span>
                     </a>
                     <a href="#" class="nav-item" data-category="updates">
                         <span class="nav-icon">🔄</span>
@@ -42,6 +54,10 @@
                         <span class="nav-icon">📦</span>
                         <span>DLC</span>
                     </a>
+                    <a href="#" class="nav-item" data-category="themes">
+                        <span class="nav-icon">🎨</span>
+                        <span>Tema</span>
+                    </a>
                 </nav>
                 
                 <div class="header-actions">
@@ -49,11 +65,23 @@
                         <input type="text" id="search-input" placeholder="Cari game/aplikasi...">
                         <span class="search-icon">🔍</span>
                     </div>
+                    <button class="btn-icon" onclick="app.refreshCatalog()" title="Refresh Katalog" id="refresh-btn">
+                        <span>🔄</span>
+                    </button>
+                    <button class="btn-icon" onclick="app.showUpdates()" title="Cek Update">
+                        <span>🔄</span>
+                    </button>
+                    <button class="btn-icon" onclick="app.showDownloadHistory()" title="Riwayat Download">
+                        <span>📥</span>
+                    </button>
                     <button class="btn-icon" onclick="app.showUrlDownload()" title="Download dari URL">
                         <span>⬇️</span>
                     </button>
                     <button class="btn-icon" onclick="app.toggleFavorites()" title="Favorit">
                         <span>❤️</span>
+                    </button>
+                    <button class="btn-icon" onclick="app.showSettings()" title="Pengaturan">
+                        <span>⚙️</span>
                     </button>
                 </div>
             </div>
@@ -111,9 +139,13 @@
         <section class="quick-categories">
             <button class="category-btn active" data-category="all">Semua</button>
             <button class="category-btn" data-category="games">🎮 Game</button>
+            <button class="category-btn" data-category="homebrew">🛠️ Homebrew</button>
             <button class="category-btn" data-category="apps">📱 Aplikasi</button>
+            <button class="category-btn" data-category="tools">🔧 Tools</button>
+            <button class="category-btn" data-category="emulators">🕹️ Emulator</button>
             <button class="category-btn" data-category="updates">🔄 Update</button>
             <button class="category-btn" data-category="dlc">📦 DLC</button>
+            <button class="category-btn" data-category="themes">🎨 Tema</button>
         </section>
 
         <!-- Top Downloads -->
@@ -132,17 +164,24 @@
             <div class="section-header">
                 <h2 class="section-title" id="catalog-title">Katalog Lengkap</h2>
                 <div class="catalog-filters">
+                    <span class="last-updated" id="last-updated">Terakhir: Memuat...</span>
                     <select id="sort-filter" onchange="app.applyFilters()">
                         <option value="newest">Terbaru</option>
                         <option value="popular">Terpopuler</option>
                         <option value="size">Ukuran</option>
-                        <option value="name">Nama</option>
+                        <option value="name">Nama A-Z</option>
                     </select>
                     <select id="size-filter" onchange="app.applyFilters()">
                         <option value="all">Semua Ukuran</option>
                         <option value="small">< 10 GB</option>
                         <option value="medium">10-30 GB</option>
                         <option value="large">> 30 GB</option>
+                    </select>
+                    <select id="firmware-filter" onchange="app.applyFilters()">
+                        <option value="all">Semua Firmware</option>
+                        <option value="9.00">9.00</option>
+                        <option value="10.00">10.00</option>
+                        <option value="11.00">11.00</option>
                     </select>
                 </div>
             </div>
@@ -172,7 +211,7 @@
 
     <!-- Install Modal -->
     <div id="install-modal" class="modal-overlay" style="display:none">
-        <div class="ps-modal">
+        <div class="ps-modal" style="max-width: 700px;">
             <div class="modal-header">
                 <h3 id="modal-game-title">Game Title</h3>
                 <button class="close-btn" onclick="app.closeModal('install-modal')">×</button>
@@ -181,10 +220,25 @@
                 <div class="modal-image">
                     <img id="modal-game-image" src="" alt="Game Cover">
                 </div>
+                
+                <!-- Screenshot Gallery -->
+                <div class="screenshot-gallery" id="modal-screenshots" style="display:none;">
+                    <h4>📸 Screenshot</h4>
+                    <div class="screenshot-grid" id="screenshot-grid"></div>
+                </div>
+                
                 <div class="game-details">
+                    <div class="detail-row">
+                        <span class="detail-label">Title ID:</span>
+                        <span id="modal-title-id">Unknown</span>
+                    </div>
                     <div class="detail-row">
                         <span class="detail-label">Publisher:</span>
                         <span id="modal-publisher">Unknown</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Author:</span>
+                        <span id="modal-author">Unknown</span>
                     </div>
                     <div class="detail-row">
                         <span class="detail-label">Size:</span>
@@ -202,6 +256,39 @@
                         <span class="detail-label">Rating:</span>
                         <span id="modal-rating">M</span>
                     </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Firmware:</span>
+                        <span id="modal-firmware">9.00+</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">SHA256:</span>
+                        <span id="modal-sha256" style="font-family: monospace; font-size: 12px;">-</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">License:</span>
+                        <span id="modal-license">Unknown</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Website:</span>
+                        <a id="modal-website" href="#" target="_blank" style="color: var(--ps-light-blue);">-</a>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Source:</span>
+                        <a id="modal-source" href="#" target="_blank" style="color: var(--ps-light-blue);">-</a>
+                    </div>
+                    
+                    <!-- Changelog -->
+                    <div class="changelog-section" id="modal-changelog" style="display:none;">
+                        <h4>📝 Changelog</h4>
+                        <div id="changelog-content"></div>
+                    </div>
+                    
+                    <!-- Version History -->
+                    <div class="version-history" id="modal-version-history" style="display:none;">
+                        <h4>📜 Version History</h4>
+                        <div id="version-history-content"></div>
+                    </div>
+                    
                     <div class="game-description" id="modal-description">
                         Description here
                     </div>
@@ -307,6 +394,8 @@
     <div id="toast-container"></div>
 
     <!-- Scripts -->
+    <script src="js/api.js"></script>
+    <script src="js/sha256.js"></script>
     <script src="js/games-data.js"></script>
     <script src="js/app.js"></script>
     <script src="js/download-manager.js"></script>

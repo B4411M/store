@@ -5,6 +5,7 @@
 
 class PS4StoreApp {
     constructor() {
+        this.api = new StoreAPI();
         this.downloadManager = new DownloadManager(this);
         this.pkgInstaller = new PKGInstaller(this);
         this.currentCategory = 'all';
@@ -13,6 +14,10 @@ class PS4StoreApp {
         this.featuredGames = [];
         this.favorites = this.loadFavorites();
         this.isPS4 = this.detectPS4();
+        this.catalogLoaded = false;
+        this.localVersion = parseInt(localStorage.getItem('catalogVersion') || '0');
+        this.pendingDownloadGame = null;
+        this.goldhenUrl = localStorage.getItem('goldhenUrl') || 'http://localhost:12800';
         this.init();
     }
 
@@ -24,16 +29,18 @@ class PS4StoreApp {
     init() {
         console.log('PS4 HEN Store initializing...');
         console.log('Running on PS4:', this.isPS4);
-        console.log('Games loaded:', this.getGameCatalog().length);
+
+        // Set GoldHEN URL for PKG installer
+        this.pkgInstaller.setGoldHENUrl(this.goldhenUrl);
 
         this.setupNavigation();
         this.setupSearch();
         this.setupCategoryButtons();
-        this.renderFeatured();
-        this.renderTopDownloads();
-        this.renderGameCatalog();
-        this.updateStats();
         this.setupModals();
+        this.setupOfflineDetection();
+
+        // Load catalog from API
+        this.loadCatalog();
 
         if (!this.isPS4) {
             this.showToast('Demo Mode - Buka di PS4 untuk fitur lengkap', 'info');
@@ -42,14 +49,116 @@ class PS4StoreApp {
         console.log('PS4 HEN Store ready!');
     }
 
-    // ========== GAME CATALOG ==========
-    getGameCatalog() {
-        // First, try to load from localStorage (primary)
+    async loadCatalog() {
+        try {
+            this.showToast('Memuat katalog...', 'info');
+
+            // Check for updates
+            const updateCheck = await this.api.checkForUpdates(this.localVersion);
+            if (updateCheck.hasUpdate) {
+                this.showToast('Katalog baru tersedia!', 'success');
+            }
+
+            // Load games
+            const games = await this.api.getGames();
+            this.saveGamesToStorage(games);
+
+            // Load categories
+            const categories = await this.api.getCategories();
+            this.saveCategoriesToStorage(categories);
+
+            // Load featured
+            const featured = await this.api.getFeatured();
+            this.featuredGames = featured;
+
+            this.catalogLoaded = true;
+            this.localVersion = updateCheck.latestVersion || this.localVersion;
+            localStorage.setItem('catalogVersion', this.localVersion.toString());
+            localStorage.setItem('catalogUpdated', updateCheck.updated || new Date().toISOString());
+
+            this.renderFeatured();
+            this.renderTopDownloads();
+            this.renderGameCatalog();
+            this.updateStats();
+
+            this.showToast('Katalog dimuat!', 'success');
+            this.updateLastUpdatedDisplay();
+            
+            // Setup auto-refresh
+            this.setupAutoRefresh();
+        } catch (error) {
+            console.error('Failed to load catalog:', error);
+            this.showToast('Gagal memuat katalog, menggunakan cache...', 'warning');
+            this.loadFromCache();
+        }
+    }
+
+    setupAutoRefresh() {
+        // Auto-refresh every 30 minutes if enabled
+        const autoRefresh = localStorage.getItem('autoRefresh') !== 'false';
+        const refreshInterval = parseInt(localStorage.getItem('refreshInterval') || '30') * 60 * 1000;
+        
+        if (autoRefresh) {
+            this.autoRefreshTimer = setInterval(() => {
+                if (document.visibilityState === 'visible') {
+                    this.refreshCatalogSilent();
+                }
+            }, refreshInterval);
+        }
+        
+        // Also refresh when tab becomes visible
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && this.catalogLoaded) {
+                this.refreshCatalogSilent();
+            }
+        });
+    }
+
+    async refreshCatalogSilent() {
+        try {
+            const updateCheck = await this.api.checkForUpdates(this.localVersion);
+            if (updateCheck.hasUpdate) {
+                await this.loadCatalog();
+                this.showToast('Katalog diperbarui otomatis!', 'success');
+            }
+        } catch (error) {
+            console.log('Silent refresh failed:', error);
+        }
+    }
+
+    async refreshCatalog() {
+        this.showToast('Memperbarui katalog...', 'info');
+        try {
+            await this.api.forceRefresh();
+            await this.loadCatalog();
+            this.showToast('Katalog diperbarui!', 'success');
+        } catch (error) {
+            console.error('Refresh failed:', error);
+            this.showToast('Gagal memperbarui katalog', 'error');
+        }
+    }
+
+    getLastUpdated() {
+        return localStorage.getItem('catalogUpdated') || 'Belum pernah';
+    }
+
+    updateLastUpdatedDisplay() {
+        const el = document.getElementById('last-updated');
+        if (el) {
+            const updated = this.getLastUpdated();
+            el.textContent = `Terakhir: ${updated}`;
+        }
+    }
         try {
             const saved = localStorage.getItem('ps4StoreGames');
             if (saved && JSON.parse(saved).length > 0) {
                 console.log('Loading from localStorage:', JSON.parse(saved).length);
-                return JSON.parse(saved);
+                this.catalogLoaded = true;
+                this.renderFeatured();
+                this.renderTopDownloads();
+                this.renderGameCatalog();
+                this.updateStats();
+                return;
             }
         } catch (e) {
             console.warn('Could not load from localStorage:', e);
@@ -59,6 +168,56 @@ class PS4StoreApp {
         try {
             if (typeof PS4_GAME_CATALOG !== 'undefined') {
                 console.log('Loading from games-data.js (fallback):', PS4_GAME_CATALOG.length);
+                this.saveGamesToStorage(PS4_GAME_CATALOG);
+                this.catalogLoaded = true;
+                this.renderFeatured();
+                this.renderTopDownloads();
+                this.renderGameCatalog();
+                this.updateStats();
+                return;
+            }
+        } catch (e) {
+            console.warn('Could not load embedded catalog:', e);
+        }
+
+        this.catalogLoaded = true;
+        this.renderFeatured();
+        this.renderTopDownloads();
+        this.renderGameCatalog();
+        this.updateStats();
+    }
+
+    saveGamesToStorage(games) {
+        try {
+            localStorage.setItem('ps4StoreGames', JSON.stringify(games));
+        } catch (e) {
+            console.warn('Could not save games to localStorage:', e);
+        }
+    }
+
+    saveCategoriesToStorage(categories) {
+        try {
+            localStorage.setItem('ps4StoreCategories', JSON.stringify(categories));
+        } catch (e) {
+            console.warn('Could not save categories to localStorage:', e);
+        }
+    }
+
+    // ========== GAME CATALOG ==========
+    getGameCatalog() {
+        // First, try to load from localStorage (primary)
+        try {
+            const saved = localStorage.getItem('ps4StoreGames');
+            if (saved && JSON.parse(saved).length > 0) {
+                return JSON.parse(saved);
+            }
+        } catch (e) {
+            console.warn('Could not load from localStorage:', e);
+        }
+
+        // Fall back to embedded PS4_GAME_CATALOG
+        try {
+            if (typeof PS4_GAME_CATALOG !== 'undefined') {
                 return PS4_GAME_CATALOG;
             }
         } catch (e) {
@@ -94,6 +253,7 @@ class PS4StoreApp {
         this.updateHero(category);
         this.renderGameCatalog();
         this.updateCategoryButtons(category);
+        this.updateNavItems(category);
     }
 
     updateHero(category) {
@@ -106,25 +266,37 @@ class PS4StoreApp {
         const titles = {
             'all': 'PS4 HEN STORE',
             'games': 'Game PS4',
+            'homebrew': 'Homebrew',
             'apps': 'Aplikasi Homebrew',
+            'tools': 'Tools & Utilities',
+            'emulators': 'Emulator',
             'updates': 'Update & Patch',
-            'dlc': 'DLC Content'
+            'dlc': 'DLC Content',
+            'themes': 'Tema'
         };
 
         const descs = {
             'all': 'Download dan install game langsung di PS4 Anda dengan satu klik',
             'games': 'Koleksi game lengkap untuk PS4 homebrew',
+            'homebrew': 'Aplikasi homebrew untuk PS4',
             'apps': 'Aplikasi dan tools homebrew untuk PS4',
+            'tools': 'Tools dan utilities untuk PS4',
+            'emulators': 'Emulator game retro untuk PS4',
             'updates': 'Update dan patch terbaru untuk game',
-            'dlc': 'Konten tambahan untuk game kesayangan Anda'
+            'dlc': 'Konten tambahan untuk game kesayangan Anda',
+            'themes': 'Tema dan kustomisasi untuk PS4'
         };
 
         const badges = {
             'all': '🔥 Unggulan',
             'games': '🎮 Game',
+            'homebrew': '🛠️ Homebrew',
             'apps': '📱 Apps',
+            'tools': '🔧 Tools',
+            'emulators': '🕹️ Emulator',
             'updates': '🔄 Update',
-            'dlc': '📦 DLC'
+            'dlc': '📦 DLC',
+            'themes': '🎨 Tema'
         };
 
         heroTitle.textContent = titles[category] || titles['all'];
@@ -147,6 +319,15 @@ class PS4StoreApp {
             btn.classList.remove('active');
             if (btn.dataset.category === activeCategory) {
                 btn.classList.add('active');
+            }
+        });
+    }
+
+    updateNavItems(activeCategory) {
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.classList.remove('active');
+            if (item.dataset.category === activeCategory) {
+                item.classList.add('active');
             }
         });
     }
@@ -178,10 +359,14 @@ class PS4StoreApp {
         }
 
         const catalog = this.getGameCatalog();
+        const lowerQuery = query.toLowerCase();
         const results = catalog.filter(game =>
-            (game.title && game.title.toLowerCase().includes(query.toLowerCase())) ||
-            (game.description && game.description.toLowerCase().includes(query.toLowerCase())) ||
-            (game.publisher && game.publisher.toLowerCase().includes(query.toLowerCase()))
+            (game.title && game.title.toLowerCase().includes(lowerQuery)) ||
+            (game.title_id && game.title_id.toLowerCase().includes(lowerQuery)) ||
+            (game.author && game.author.toLowerCase().includes(lowerQuery)) ||
+            (game.category && game.category.toLowerCase().includes(lowerQuery)) ||
+            (game.description && game.description.toLowerCase().includes(lowerQuery)) ||
+            (game.publisher && game.publisher.toLowerCase().includes(lowerQuery))
         );
 
         this.renderGames(results);
@@ -288,11 +473,55 @@ class PS4StoreApp {
 
     // ========== GAME CATALOG ==========
     renderGameCatalog() {
+        this.applyFilters();
+    }
+
+    applyFilters() {
         let games = this.currentCategory === 'all' 
             ? this.getGameCatalog() 
             : this.getGameCatalog().filter(g => g.category === this.currentCategory);
 
-        games.sort((a, b) => b.id - a.id);
+        // Apply size filter
+        const sizeFilter = document.getElementById('size-filter');
+        if (sizeFilter && sizeFilter.value !== 'all') {
+            const sizeValue = sizeFilter.value;
+            games = games.filter(game => {
+                const sizeGB = (game.size || 0) / (1024 * 1024 * 1024);
+                if (sizeValue === 'small') return sizeGB < 10;
+                if (sizeValue === 'medium') return sizeGB >= 10 && sizeGB <= 30;
+                if (sizeValue === 'large') return sizeGB > 30;
+                return true;
+            });
+        }
+
+        // Apply firmware filter
+        const firmwareFilter = document.getElementById('firmware-filter');
+        if (firmwareFilter && firmwareFilter.value !== 'all') {
+            const fwValue = firmwareFilter.value;
+            games = games.filter(game => {
+                const minFw = game.firmware?.min || '9.00';
+                return minFw <= fwValue;
+            });
+        }
+
+        // Apply sort
+        const sortFilter = document.getElementById('sort-filter');
+        const sortValue = sortFilter ? sortFilter.value : 'newest';
+        switch (sortValue) {
+            case 'newest':
+                games.sort((a, b) => (b.createdAt || b.id) - (a.createdAt || a.id));
+                break;
+            case 'popular':
+                games.sort((a, b) => (b.downloads || 0) - (a.downloads || 0));
+                break;
+            case 'size':
+                games.sort((a, b) => (b.size || 0) - (a.size || 0));
+                break;
+            case 'name':
+                games.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+                break;
+        }
+
         this.renderGames(games);
         this.updateCatalogTitle();
     }
@@ -348,7 +577,16 @@ class PS4StoreApp {
     }
 
     getCategoryLabel(category) {
-        const labels = { 'games': 'GAME', 'apps': 'APP', 'updates': 'UPDATE', 'dlc': 'DLC' };
+        const labels = { 
+            'games': 'GAME', 
+            'homebrew': 'HOMEBREW',
+            'apps': 'APP', 
+            'tools': 'TOOLS',
+            'emulators': 'EMU',
+            'updates': 'UPDATE', 
+            'dlc': 'DLC',
+            'themes': 'THEME'
+        };
         return labels[category] || category?.toUpperCase() || 'GAME';
     }
 
@@ -356,7 +594,16 @@ class PS4StoreApp {
         if (game.image && (game.image.startsWith('http') || game.image.startsWith('data:'))) {
             return game.image;
         }
-        const icons = { 'games': '🎮', 'apps': '📱', 'updates': '🔄', 'dlc': '📦' };
+        const icons = { 
+            'games': '🎮', 
+            'homebrew': '🛠️',
+            'apps': '📱', 
+            'tools': '🔧',
+            'emulators': '🕹️',
+            'updates': '🔄', 
+            'dlc': '📦',
+            'themes': '🎨'
+        };
         const icon = icons[game.category] || '🎮';
         return `data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 240 140%22><rect fill=%22%231a1a1a%22 width=%22240%22 height=%22140%22/><text x=%22120%22 y=%2270%22 text-anchor=%22middle%22 fill=%22%23666%22 font-size=%2224%22>${encodeURIComponent(icon)}</text></svg>`;
     }
@@ -387,21 +634,111 @@ class PS4StoreApp {
 
         const titleEl = document.getElementById('modal-game-title');
         const imageEl = document.getElementById('modal-game-image');
+        const titleIdEl = document.getElementById('modal-title-id');
         const publisherEl = document.getElementById('modal-publisher');
+        const authorEl = document.getElementById('modal-author');
         const sizeEl = document.getElementById('modal-size');
         const versionEl = document.getElementById('modal-version');
         const categoryEl = document.getElementById('modal-category');
         const ratingEl = document.getElementById('modal-rating');
+        const firmwareEl = document.getElementById('modal-firmware');
+        const sha256El = document.getElementById('modal-sha256');
+        const licenseEl = document.getElementById('modal-license');
+        const websiteEl = document.getElementById('modal-website');
+        const sourceEl = document.getElementById('modal-source');
         const descEl = document.getElementById('modal-description');
+        const screenshotsContainer = document.getElementById('modal-screenshots');
+        const screenshotGrid = document.getElementById('screenshot-grid');
+        const changelogSection = document.getElementById('modal-changelog');
+        const changelogContent = document.getElementById('changelog-content');
+        const versionHistorySection = document.getElementById('modal-version-history');
+        const versionHistoryContent = document.getElementById('version-history-content');
 
         if (titleEl) titleEl.textContent = game.title || 'Unknown';
         if (imageEl) imageEl.src = this.getGameImage(game);
-        if (publisherEl) publisherEl.textContent = game.publisher || 'Unknown';
+        if (titleIdEl) titleIdEl.textContent = game.title_id || game.contentId || 'Unknown';
+        if (publisherEl) publisherEl.textContent = game.publisher || game.author || 'Unknown';
+        if (authorEl) authorEl.textContent = game.author || game.publisher || 'Unknown';
         if (sizeEl) sizeEl.textContent = this.formatSize(game.size || 0);
         if (versionEl) versionEl.textContent = game.version || '1.0';
         if (categoryEl) categoryEl.textContent = this.getCategoryLabel(game.category);
         if (ratingEl) ratingEl.textContent = game.rating || 'M';
+        
+        // Firmware
+        if (firmwareEl) {
+            const minFw = game.firmware?.min || '9.00';
+            const maxFw = game.firmware?.max || '13.00';
+            firmwareEl.textContent = `${minFw} - ${maxFw}`;
+        }
+        
+        // SHA256
+        if (sha256El) {
+            const sha256 = game.pkg?.sha256 || game.sha256 || '-';
+            sha256El.textContent = sha256;
+            sha256El.title = sha256; // Show full hash on hover
+        }
+        
+        // License
+        if (licenseEl) licenseEl.textContent = game.license || 'Unknown';
+        
+        // Website
+        if (websiteEl) {
+            if (game.website) {
+                websiteEl.href = game.website;
+                websiteEl.textContent = game.website;
+            } else {
+                websiteEl.href = '#';
+                websiteEl.textContent = '-';
+            }
+        }
+        
+        // Source
+        if (sourceEl) {
+            if (game.source) {
+                sourceEl.href = game.source;
+                sourceEl.textContent = game.source;
+            } else {
+                sourceEl.href = '#';
+                sourceEl.textContent = '-';
+            }
+        }
+        
         if (descEl) descEl.textContent = game.description || 'Deskripsi tidak tersedia';
+        
+        // Screenshots
+        if (game.screenshots && game.screenshots.length > 0) {
+            if (screenshotsContainer) screenshotsContainer.style.display = 'block';
+            if (screenshotGrid) {
+                screenshotGrid.innerHTML = game.screenshots.map(url => 
+                    `<img src="${url}" alt="Screenshot" class="screenshot-thumb" onclick="window.open('${url}', '_blank')">`
+                ).join('');
+            }
+        } else {
+            if (screenshotsContainer) screenshotsContainer.style.display = 'none';
+        }
+        
+        // Changelog
+        if (game.changelog) {
+            if (changelogSection) changelogSection.style.display = 'block';
+            if (changelogContent) changelogContent.textContent = game.changelog;
+        } else {
+            if (changelogSection) changelogSection.style.display = 'none';
+        }
+        
+        // Version History
+        if (game.version_history && game.version_history.length > 0) {
+            if (versionHistorySection) versionHistorySection.style.display = 'block';
+            if (versionHistoryContent) {
+                versionHistoryContent.innerHTML = game.version_history.map(v => 
+                    `<div class="version-item">
+                        <strong>v${v.version}</strong> - ${v.date || ''}
+                        <div>${v.changes || ''}</div>
+                    </div>`
+                ).join('');
+            }
+        } else {
+            if (versionHistorySection) versionHistorySection.style.display = 'none';
+        }
 
         const installBtn = document.getElementById('install-btn');
         const hasValidUrl = game.url && !game.url.includes('example.com') && this.isValidUrl(game.url);
@@ -461,6 +798,154 @@ class PS4StoreApp {
             return;
         }
 
+        // If on PS4, show option to download to PS4 notifications
+        if (this.isPS4) {
+            this.showDownloadMethodChoice(game);
+            return;
+        }
+
+        this.startBrowserDownload(game);
+    }
+
+    showDownloadMethodChoice(game) {
+        // Create modal if not exists
+        let modal = document.getElementById('download-method-modal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'download-method-modal';
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div class="ps-modal" style="max-width: 500px;">
+                    <div class="modal-header">
+                        <h3>⬇️ Metode Download</h3>
+                        <button class="close-btn" onclick="app.closeModal('download-method-modal')">×</button>
+                    </div>
+                    <div class="modal-body" style="text-align: center; padding: 30px 20px;">
+                        <img id="method-game-image" src="" alt="Game" style="width: 120px; height: 160px; object-fit: cover; border-radius: 8px; margin-bottom: 15px;">
+                        <h4 id="method-game-title" style="margin-bottom: 5px;"></h4>
+                        <p id="method-game-size" style="color: var(--ps-text-secondary); margin-bottom: 20px;"></p>
+                        <div style="display: flex; flex-direction: column; gap: 15px;">
+                            <button class="ps-btn-primary" onclick="app.confirmPS4NotificationDownload()" style="font-size: 16px; padding: 18px;">
+                                📱 <strong>Download ke Notifikasi PS4</strong>
+                                <br><small style="font-weight: normal; opacity: 0.8;">Menggunakan GoldHEN - Muncul di notifikasi sistem PS4</small>
+                            </button>
+                            <button class="ps-btn-secondary" onclick="app.confirmBrowserDownload()" style="font-size: 16px; padding: 18px;">
+                                🌐 <strong>Download di Browser</strong>
+                                <br><small style="font-weight: normal; opacity: 0.8;">Download manual via browser, lalu install</small>
+                            </button>
+                        </div>
+                        <p style="margin-top: 15px; font-size: 12px; color: var(--ps-warning);">
+                            ⚠️ Pastikan GoldHEN aktif untuk download ke notifikasi PS4
+                        </p>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        // Update modal content
+        const imageEl = document.getElementById('method-game-image');
+        const titleEl = document.getElementById('method-game-title');
+        const sizeEl = document.getElementById('method-game-size');
+
+        if (imageEl) imageEl.src = this.getGameImage(game);
+        if (titleEl) titleEl.textContent = game.title || 'Unknown';
+        if (sizeEl) sizeEl.textContent = this.formatSize(game.size || 0);
+
+        // Store selected game for callback
+        this.pendingDownloadGame = game;
+
+        this.openModal('download-method-modal');
+    }
+
+    confirmPS4NotificationDownload() {
+        const game = this.pendingDownloadGame;
+        this.closeModal('download-method-modal');
+        this.pendingDownloadGame = null;
+        
+        if (game) {
+            this.startPS4NotificationDownload(game);
+        }
+    }
+
+    confirmBrowserDownload() {
+        const game = this.pendingDownloadGame;
+        this.closeModal('download-method-modal');
+        this.pendingDownloadGame = null;
+        
+        if (game) {
+            this.startBrowserDownload(game);
+        }
+    }
+
+    async startPS4NotificationDownload(game) {
+        if (!game.url || !this.isValidUrl(game.url)) {
+            this.showToast('URL tidak tersedia untuk: ' + (game.title || 'Game ini'), 'error');
+            return;
+        }
+
+        const progressImage = document.getElementById('progress-image');
+        if (progressImage) progressImage.src = this.getGameImage(game);
+
+        const progressFilename = document.getElementById('progress-filename');
+        if (progressFilename) progressFilename.textContent = (game.title || 'Game') + '.pkg';
+
+        const progressStatus = document.getElementById('progress-status');
+        if (progressStatus) progressStatus.textContent = 'Mengirim ke notifikasi PS4...';
+
+        const progressFill = document.getElementById('progress-fill');
+        if (progressFill) progressFill.style.width = '0%';
+
+        const progressPercent = document.getElementById('progress-percent');
+        if (progressPercent) progressPercent.textContent = '0%';
+
+        const progressBytes = document.getElementById('progress-bytes');
+        if (progressBytes) progressBytes.textContent = 'Mengirim ke sistem PS4...';
+
+        const openGameBtn = document.getElementById('open-game-btn');
+        if (openGameBtn) openGameBtn.style.display = 'none';
+
+        this.openModal('progress-modal');
+
+        try {
+            const expectedSha256 = game.pkg?.sha256 || game.sha256 || null;
+            const expectedSize = game.size || 0;
+
+            const result = await this.downloadManager.downloadToPS4Notifications(
+                game.url,
+                (game.title || 'game') + '.pkg',
+                game.title || 'Game',
+                { 
+                    size: expectedSize, 
+                    sha256: expectedSha256,
+                    titleId: game.title_id || game.contentId,
+                    version: game.version,
+                    category: game.category,
+                    autoInstall: true
+                }
+            );
+
+            if (result.success) {
+                this.showToast('Download dikirim ke notifikasi PS4!', 'success');
+                // Close progress modal after a delay
+                setTimeout(() => this.closeModal('progress-modal'), 2000);
+            } else {
+                this.showToast('Gagal: ' + (result.error || 'Unknown error'), 'error');
+                this.closeModal('progress-modal');
+            }
+        } catch (error) {
+            console.error('PS4 notification download error:', error);
+            this.showToast('Download gagal: ' + error.message, 'error');
+            this.closeModal('progress-modal');
+        }
+    }
+
+    async startBrowserDownload(game) {
+        if (!game.url || !this.isValidUrl(game.url)) {
+            this.showToast('URL tidak tersedia untuk: ' + (game.title || 'Game ini'), 'error');
+            return;
+        }
+
         const progressImage = document.getElementById('progress-image');
         if (progressImage) progressImage.src = this.getGameImage(game);
 
@@ -485,10 +970,15 @@ class PS4StoreApp {
         this.openModal('progress-modal');
 
         try {
+            // Get SHA256 from game data (pkg.sha256 or game.sha256)
+            const expectedSha256 = game.pkg?.sha256 || game.sha256 || null;
+            const expectedSize = game.size || 0;
+
             const success = await this.downloadManager.addDownload(
                 game.url,
                 (game.title || 'game') + '.pkg',
-                game.title || 'Game'
+                game.title || 'Game',
+                { size: expectedSize, sha256: expectedSha256 }
             );
 
             if (success) {
@@ -593,6 +1083,128 @@ class PS4StoreApp {
         this.openModal('favorites-modal');
     }
 
+    showSettings() {
+        // Create modal if not exists
+        let modal = document.getElementById('settings-modal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'settings-modal';
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div class="ps-modal" style="max-width: 500px;">
+                    <div class="modal-header">
+                        <h3>⚙️ Pengaturan</h3>
+                        <button class="close-btn" onclick="app.closeModal('settings-modal')">×</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="setting-group" style="margin-bottom: 20px;">
+                            <label style="display: block; margin-bottom: 8px; font-weight: 500;">🌐 GoldHEN URL</label>
+                            <input type="url" id="goldhen-url-input" placeholder="http://localhost:12800" style="width: 100%; padding: 12px; background: var(--ps-light-gray); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: var(--ps-text); font-size: 14px;">
+                            <p style="font-size: 12px; color: var(--ps-text-secondary); margin-top: 5px;">URL endpoint GoldHEN untuk download ke notifikasi PS4</p>
+                        </div>
+                        <div class="setting-group" style="margin-bottom: 20px;">
+                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                                <input type="checkbox" id="auto-refresh-toggle" style="width: 18px; height: 18px; accent-color: var(--ps-light-blue);">
+                                <span>🔄 Auto-refresh katalog (setiap 30 menit)</span>
+                            </label>
+                        </div>
+                        <div class="setting-group" style="margin-bottom: 20px;">
+                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                                <input type="checkbox" id="verify-sha256-toggle" style="width: 18px; height: 18px; accent-color: var(--ps-light-blue);">
+                                <span>🔐 Verifikasi SHA256 otomatis setelah download</span>
+                            </label>
+                        </div>
+                        <div class="setting-group" style="margin-bottom: 20px;">
+                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                                <input type="checkbox" id="keep-pkg-toggle" style="width: 18px; height: 18px; accent-color: var(--ps-light-blue);">
+                                <span>💾 Simpan file PKG setelah install</span>
+                            </label>
+                        </div>
+                        <div class="setting-group">
+                            <label style="display: block; margin-bottom: 8px; font-weight: 500;">🧹 Data & Cache</label>
+                            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                <button class="ps-btn-secondary" onclick="app.clearCache()" style="font-size: 12px; padding: 8px 16px;">🗑️ Hapus Cache Katalog</button>
+                                <button class="ps-btn-secondary" onclick="app.clearAllData()" style="font-size: 12px; padding: 8px 16px;">🗑️ Hapus Semua Data</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="ps-btn-secondary" onclick="app.closeModal('settings-modal')">Batal</button>
+                        <button class="ps-btn-primary" onclick="app.saveSettings()">💾 Simpan</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        // Load current settings
+        const goldhenInput = document.getElementById('goldhen-url-input');
+        const autoRefreshToggle = document.getElementById('auto-refresh-toggle');
+        const verifySha256Toggle = document.getElementById('verify-sha256-toggle');
+        const keepPkgToggle = document.getElementById('keep-pkg-toggle');
+
+        if (goldhenInput) goldhenInput.value = this.goldhenUrl;
+        if (autoRefreshToggle) autoRefreshToggle.checked = localStorage.getItem('autoRefresh') !== 'false';
+        if (verifySha256Toggle) verifySha256Toggle.checked = localStorage.getItem('verifySha256') !== 'false';
+        if (keepPkgToggle) keepPkgToggle.checked = localStorage.getItem('keepPkgAfterInstall') === 'true';
+
+        this.openModal('settings-modal');
+    }
+
+    saveSettings() {
+        const goldhenInput = document.getElementById('goldhen-url-input');
+        const autoRefreshToggle = document.getElementById('auto-refresh-toggle');
+        const verifySha256Toggle = document.getElementById('verify-sha256-toggle');
+        const keepPkgToggle = document.getElementById('keep-pkg-toggle');
+
+        if (goldhenInput && goldhenInput.value.trim()) {
+            this.goldhenUrl = goldhenInput.value.trim();
+            localStorage.setItem('goldhenUrl', this.goldhenUrl);
+            this.pkgInstaller.setGoldHENUrl(this.goldhenUrl);
+        }
+
+        if (autoRefreshToggle) {
+            localStorage.setItem('autoRefresh', autoRefreshToggle.checked.toString());
+            if (autoRefreshToggle.checked) {
+                this.setupAutoRefresh();
+            } else if (this.autoRefreshTimer) {
+                clearInterval(this.autoRefreshTimer);
+                this.autoRefreshTimer = null;
+            }
+        }
+
+        if (verifySha256Toggle) {
+            localStorage.setItem('verifySha256', verifySha256Toggle.checked.toString());
+        }
+
+        if (keepPkgToggle) {
+            localStorage.setItem('keepPkgAfterInstall', keepPkgToggle.checked.toString());
+        }
+
+        this.showToast('Pengaturan disimpan!', 'success');
+        this.closeModal('settings-modal');
+    }
+
+    clearCache() {
+        this.api.clearCache();
+        localStorage.removeItem('ps4StoreGames');
+        localStorage.removeItem('ps4StoreCategories');
+        localStorage.removeItem('catalogVersion');
+        localStorage.removeItem('catalogUpdated');
+        this.showToast('Cache dihapus. Memuat ulang katalog...', 'info');
+        this.loadCatalog();
+        this.closeModal('settings-modal');
+    }
+
+    clearAllData() {
+        if (confirm('⚠️ Hapus SEMUA data (katalog, favorit, riwayat, pengaturan)?\n\nTindakan ini tidak dapat dibatalkan!')) {
+            localStorage.clear();
+            this.showToast('Semua data dihapus!', 'success');
+            this.closeModal('settings-modal');
+            setTimeout(() => location.reload(), 1000);
+        }
+    }
+
     renderFavorites() {
         const container = document.getElementById('favorites-list');
         if (!container) return;
@@ -627,6 +1239,121 @@ class PS4StoreApp {
         this.showToast('Favorit dihapus', 'success');
     }
 
+    // ========== DOWNLOAD HISTORY ==========
+    loadDownloadHistory() {
+        try {
+            return JSON.parse(localStorage.getItem('ps4StoreDownloadHistory') || '[]');
+        } catch (e) {
+            return [];
+        }
+    }
+
+    saveDownloadHistory(history) {
+        localStorage.setItem('ps4StoreDownloadHistory', JSON.stringify(history));
+    }
+
+    addToDownloadHistory(game) {
+        const history = this.loadDownloadHistory();
+        const entry = {
+            title_id: game.title_id || game.contentId || game.id,
+            title: game.title || 'Unknown',
+            version: game.version || '1.0',
+            size: game.size || 0,
+            category: game.category || 'unknown',
+            downloaded: new Date().toISOString()
+        };
+        
+        // Remove existing entry with same title_id
+        const filtered = history.filter(h => h.title_id !== entry.title_id);
+        filtered.unshift(entry);
+        
+        // Keep last 50 entries
+        if (filtered.length > 50) {
+            filtered.length = 50;
+        }
+        
+        this.saveDownloadHistory(filtered);
+    }
+
+    clearDownloadHistory() {
+        this.saveDownloadHistory([]);
+        this.showToast('Riwayat download dihapus', 'success');
+    }
+
+    showDownloadHistory() {
+        const history = this.loadDownloadHistory();
+        
+        // Create modal if not exists
+        let modal = document.getElementById('history-modal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'history-modal';
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div class="ps-modal" style="max-width: 700px;">
+                    <div class="modal-header">
+                        <h3>📥 Riwayat Download</h3>
+                        <button class="close-btn" onclick="app.closeModal('history-modal')">×</button>
+                    </div>
+                    <div class="modal-body" style="max-height: 60vh;">
+                        <div class="history-actions" style="display: flex; justify-content: space-between; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                            <span id="history-count" style="color: var(--ps-text-secondary); font-size: 13px;">${history.length} item</span>
+                            <button class="ps-btn-secondary" onclick="app.clearDownloadHistory(); app.showDownloadHistory();">🗑️ Hapus Semua</button>
+                        </div>
+                        <div id="history-list" class="history-list">
+                            ${history.length === 0 ? '<p class="empty-message" style="text-align: center; padding: 40px;">Belum ada riwayat download</p>' : history.map(item => `
+                                <div class="history-item" style="display: flex; align-items: center; gap: 15px; padding: 12px; background: var(--ps-light-gray); border-radius: 8px; margin-bottom: 8px;">
+                                    <img src="${this.getGameImage({id: item.title_id, title: item.title, category: item.category, image: null})}" alt="${item.title}" style="width: 50px; height: 70px; object-fit: cover; border-radius: 4px;">
+                                    <div class="history-item-info" style="flex: 1; min-width: 0;">
+                                        <h4 style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.title}</h4>
+                                        <p style="color: var(--ps-text-secondary); font-size: 12px;">${item.category} • ${this.formatSize(item.size)} • v${item.version}</p>
+                                        <p style="color: var(--ps-text-secondary); font-size: 11px;">${new Date(item.downloaded).toLocaleString('id-ID')}</p>
+                                    </div>
+                                    <button class="ps-btn-primary" onclick="app.downloadFromHistory('${item.title_id}')" style="padding: 8px 16px; font-size: 12px;">⬇️ Download</button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="ps-btn-primary" onclick="app.closeModal('history-modal')">Tutup</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        } else {
+            // Update existing modal
+            const list = modal.querySelector('#history-list');
+            const count = modal.querySelector('#history-count');
+            if (list) {
+                list.innerHTML = history.length === 0 ? '<p class="empty-message" style="text-align: center; padding: 40px;">Belum ada riwayat download</p>' : history.map(item => `
+                    <div class="history-item" style="display: flex; align-items: center; gap: 15px; padding: 12px; background: var(--ps-light-gray); border-radius: 8px; margin-bottom: 8px;">
+                        <img src="${this.getGameImage({id: item.title_id, title: item.title, category: item.category, image: null})}" alt="${item.title}" style="width: 50px; height: 70px; object-fit: cover; border-radius: 4px;">
+                        <div class="history-item-info" style="flex: 1; min-width: 0;">
+                            <h4 style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.title}</h4>
+                            <p style="color: var(--ps-text-secondary); font-size: 12px;">${item.category} • ${this.formatSize(item.size)} • v${item.version}</p>
+                            <p style="color: var(--ps-text-secondary); font-size: 11px;">${new Date(item.downloaded).toLocaleString('id-ID')}</p>
+                        </div>
+                        <button class="ps-btn-primary" onclick="app.downloadFromHistory('${item.title_id}')" style="padding: 8px 16px; font-size: 12px;">⬇️ Download</button>
+                    </div>
+                `).join('');
+            }
+            if (count) count.textContent = `${history.length} item`;
+        }
+        
+        this.openModal('history-modal');
+    }
+
+    downloadFromHistory(titleId) {
+        const catalog = this.getGameCatalog();
+        const game = catalog.find(g => (g.title_id || g.contentId || g.id) === titleId);
+        if (game) {
+            this.closeModal('history-modal');
+            this.startDownload(game);
+        } else {
+            this.showToast('Game tidak ditemukan di katalog saat ini', 'error');
+        }
+    }
+
     // ========== STATS ==========
     updateStats() {
         const catalog = this.getGameCatalog();
@@ -641,6 +1368,165 @@ class PS4StoreApp {
         if (gamesEl) gamesEl.textContent = totalGames;
         if (appsEl) appsEl.textContent = totalApps;
         if (sizeEl) sizeEl.textContent = this.formatSize(totalSize);
+    }
+
+    // ========== UPDATE DETECTION ==========
+    checkForUpdates() {
+        const catalog = this.getGameCatalog();
+        const installed = this.getInstalledGames();
+        const updates = [];
+        
+        for (const game of catalog) {
+            const installedGame = installed.find(g => g.title_id === (game.title_id || game.contentId));
+            if (installedGame && game.version && installedGame.version !== game.version) {
+                updates.push({
+                    game: game,
+                    currentVersion: installedGame.version,
+                    newVersion: game.version,
+                    changelog: game.changelog
+                });
+            }
+        }
+        
+        return updates;
+    }
+
+    getInstalledGames() {
+        try {
+            return JSON.parse(localStorage.getItem('ps4StoreInstalled') || '[]');
+        } catch (e) {
+            return [];
+        }
+    }
+
+    markAsInstalled(game) {
+        const installed = this.getInstalledGames();
+        const titleId = game.title_id || game.contentId || game.id;
+        
+        const existing = installed.findIndex(g => g.title_id === titleId);
+        const entry = {
+            title_id: titleId,
+            title: game.title,
+            version: game.version,
+            installedAt: new Date().toISOString()
+        };
+        
+        if (existing >= 0) {
+            installed[existing] = entry;
+        } else {
+            installed.unshift(entry);
+        }
+        
+        localStorage.setItem('ps4StoreInstalled', JSON.stringify(installed));
+    }
+
+    showUpdates() {
+        const updates = this.checkForUpdates();
+        
+        let modal = document.getElementById('updates-modal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'updates-modal';
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div class="ps-modal" style="max-width: 700px;">
+                    <div class="modal-header">
+                        <h3>🔄 Update Tersedia</h3>
+                        <button class="close-btn" onclick="app.closeModal('updates-modal')">×</button>
+                    </div>
+                    <div class="modal-body" style="max-height: 60vh;">
+                        <div id="updates-list" class="updates-list">
+                            ${updates.length === 0 ? '<p class="empty-message" style="text-align: center; padding: 40px;">Semua game sudah versi terbaru</p>' : updates.map(u => `
+                                <div class="update-item" style="background: var(--ps-light-gray); border-radius: 8px; padding: 15px; margin-bottom: 10px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+                                        <div>
+                                            <h4>${u.game.title}</h4>
+                                            <p style="color: var(--ps-text-secondary); font-size: 13px;">Versi saat ini: ${u.currentVersion} → Baru: ${u.newVersion}</p>
+                                        </div>
+                                        <span class="badge badge-updates" style="background: var(--ps-warning); color: var(--ps-dark);">UPDATE</span>
+                                    </div>
+                                    ${u.changelog ? `<div class="update-changelog" style="font-size: 12px; color: var(--ps-text-secondary); background: var(--ps-dark); padding: 10px; border-radius: 4px; white-space: pre-wrap; max-height: 100px; overflow-y: auto;">${u.changelog}</div>` : ''}
+                                    <button class="ps-btn-primary" onclick="app.updateGame('${u.game.id}')" style="margin-top: 10px; width: 100%;">⬇️ Update Sekarang</button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="ps-btn-primary" onclick="app.closeModal('updates-modal')">Tutup</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        } else {
+            const list = modal.querySelector('#updates-list');
+            if (list) {
+                list.innerHTML = updates.length === 0 ? '<p class="empty-message" style="text-align: center; padding: 40px;">Semua game sudah versi terbaru</p>' : updates.map(u => `
+                    <div class="update-item" style="background: var(--ps-light-gray); border-radius: 8px; padding: 15px; margin-bottom: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+                            <div>
+                                <h4>${u.game.title}</h4>
+                                <p style="color: var(--ps-text-secondary); font-size: 13px;">Versi saat ini: ${u.currentVersion} → Baru: ${u.newVersion}</p>
+                            </div>
+                            <span class="badge badge-updates" style="background: var(--ps-warning); color: var(--ps-dark);">UPDATE</span>
+                        </div>
+                        ${u.changelog ? `<div class="update-changelog" style="font-size: 12px; color: var(--ps-text-secondary); background: var(--ps-dark); padding: 10px; border-radius: 4px; white-space: pre-wrap; max-height: 100px; overflow-y: auto;">${u.changelog}</div>` : ''}
+                        <button class="ps-btn-primary" onclick="app.updateGame('${u.game.id}')" style="margin-top: 10px; width: 100%;">⬇️ Update Sekarang</button>
+                    </div>
+                `).join('');
+            }
+        }
+        
+        this.openModal('updates-modal');
+    }
+
+    updateGame(gameId) {
+        const catalog = this.getGameCatalog();
+        const game = catalog.find(g => g.id === gameId);
+        if (game) {
+            this.closeModal('updates-modal');
+            this.startDownload(game);
+        }
+    }
+
+    // ========== OFFLINE MODE ==========
+    isOnline() {
+        return navigator.onLine;
+    }
+
+    setupOfflineDetection() {
+        window.addEventListener('online', () => {
+            this.showToast('Koneksi internet pulih', 'success');
+            if (this.catalogLoaded) {
+                this.refreshCatalogSilent();
+            }
+        });
+        
+        window.addEventListener('offline', () => {
+            this.showToast('Mode offline - Menggunakan katalog cache', 'warning');
+            this.showOfflineBanner();
+        });
+        
+        // Check initial state
+        if (!this.isOnline()) {
+            this.showOfflineBanner();
+        }
+    }
+
+    showOfflineBanner() {
+        let banner = document.getElementById('offline-banner');
+        if (!banner) {
+            banner = document.createElement('div');
+            banner.id = 'offline-banner';
+            banner.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; background: var(--ps-warning); color: var(--ps-dark); padding: 10px; text-align: center; z-index: 9999; font-weight: 600;';
+            banner.innerHTML = '📴 Mode Offline - Menggunakan katalog tersimpan. Beberapa fitur mungkin tidak tersedia.';
+            document.body.insertBefore(banner, document.body.firstChild);
+        }
+        banner.style.display = 'block';
+    }
+
+    hideOfflineBanner() {
+        const banner = document.getElementById('offline-banner');
+        if (banner) banner.style.display = 'none';
     }
 
     // ========== MODALS ==========
@@ -708,6 +1594,30 @@ class PS4StoreApp {
 
     loadMore() {
         this.showToast('Semua game sudah dimuat', 'info');
+    }
+
+    async refreshCatalog() {
+        this.showToast('Memperbarui katalog...', 'info');
+        try {
+            await this.api.forceRefresh();
+            await this.loadCatalog();
+            this.showToast('Katalog diperbarui!', 'success');
+        } catch (error) {
+            console.error('Refresh failed:', error);
+            this.showToast('Gagal memperbarui katalog', 'error');
+        }
+    }
+
+    getLastUpdated() {
+        return localStorage.getItem('catalogUpdated') || 'Belum pernah';
+    }
+
+    updateLastUpdatedDisplay() {
+        const el = document.getElementById('last-updated');
+        if (el) {
+            const updated = this.getLastUpdated();
+            el.textContent = `Terakhir: ${updated}`;
+        }
     }
 }
 

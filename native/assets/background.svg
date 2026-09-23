@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0a0a0a;stop-opacity:1" />
+      <stop offset="30%" style="stop-color:#1a1a2e;stop-opacity:1" />
+      <stop offset="70%" style="stop-color:#16213e;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0f3460;stop-opacity:1" />
+    </linearGradient>
+    <radialGradient id="glow1" cx="30%" cy="40%" r="60%">
+      <stop offset="0%" style="stop-color:#0070CC;stop-opacity:0.3" />
+      <stop offset="100%" style="stop-color:#0070CC;stop-opacity:0" />
+    </radialGradient>
+    <radialGradient id="glow2" cx="70%" cy="60%" r="50%">
+      <stop offset="0%" style="stop-color:#FFD700;stop-opacity:0.15" />
+      <stop offset="100%" style="stop-color:#FFD700;stop-opacity:0" />
+    </radialGradient>
+    <linearGradient id="textGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#FFD700;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#FFFFFF;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#bgGrad)"/>
+  <ellipse cx="576" cy="432" rx="600" ry="400" fill="url(#glow1)"/>
+  <ellipse cx="1344" cy="648" rx="500" ry="350" fill="url(#glow2)"/>
+  <text x="960" y="480" font-family="Arial, Helvetica, sans-serif" font-size="200" font-weight="bold" fill="url(#textGrad)" text-anchor="middle" dominant-baseline="middle" opacity="0.15">B41M</text>
+  <text x="960" y="580" font-family="Arial, Helvetica, sans-serif" font-size="60" font-weight="600" fill="#FFD700" text-anchor="middle" dominant-baseline="middle" opacity="0.5">HEN STORE</text>
+  <rect x="860" y="700" width="200" height="4" fill="#FFD700" opacity="0.5"/>
+  <text x="960" y="760" font-family="Arial, Helvetica, sans-serif" font-size="28" fill="#888888" text-anchor="middle">PlayStation 4 Homebrew Store</text>
+  <text x="960" y="980" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#555555" text-anchor="middle">Press X to continue</text>
+</svg>

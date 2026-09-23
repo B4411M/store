@@ -1,0 +1,58 @@
+{
+  "categories": [
+    {
+      "id": "all",
+      "name": "Semua",
+      "icon": "🏠",
+      "description": "Semua game dan aplikasi"
+    },
+    {
+      "id": "games",
+      "name": "Game",
+      "icon": "🎮",
+      "description": "Game PS4 lengkap"
+    },
+    {
+      "id": "homebrew",
+      "name": "Homebrew",
+      "icon": "🛠️",
+      "description": "Aplikasi homebrew"
+    },
+    {
+      "id": "apps",
+      "name": "Aplikasi",
+      "icon": "📱",
+      "description": "Aplikasi dan tools"
+    },
+    {
+      "id": "tools",
+      "name": "Tools",
+      "icon": "🔧",
+      "description": "Tools dan utilities"
+    },
+    {
+      "id": "emulators",
+      "name": "Emulator",
+      "icon": "🕹️",
+      "description": "Emulator game retro"
+    },
+    {
+      "id": "updates",
+      "name": "Update",
+      "icon": "🔄",
+      "description": "Update dan patch game"
+    },
+    {
+      "id": "dlc",
+      "name": "DLC",
+      "icon": "📦",
+      "description": "Konten tambahan game"
+    },
+    {
+      "id": "themes",
+      "name": "Tema",
+      "icon": "🎨",
+      "description": "Tema dan kustomisasi"
+    }
+  ]
+}

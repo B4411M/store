@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
+  <PropertyGroup>
+    <ContentId>B41MHEN01_00-0000000000000000</ContentId>
+    <Passcode>00000000000000000000000000000000</Passcode>
+    <PackageVersion>01.00</PackageVersion>
+    <PackageType>PS4_GAME</PackageType>
+    <ApplicationType>PS4_GAME</ApplicationType>
+    <TitleName>B41M HEN STORE</TitleName>
+    <TitleId>B41MHEN01</TitleId>
+    <Category>gd</Category>
+    <ParentalLevel>1</ParentalLevel>
+    <Resolution>1920x1080</Resolution>
+    <SoundFormat>2</SoundFormat>
+    <VideoRecording>0</VideoRecording>
+    <Screenshot>1</Screenshot>
+    <VideoStreaming>0</VideoStreaming>
+    <LocalMultiplayer>0</LocalMultiplayer>
+    <VRMode>0</VRMode>
+    <NpCommId>B41MHENSTORE</NpCommId>
+    <NpCommSignature>b41mhenstore</NpCommSignature>
+  </PropertyGroup>
+  <ItemGroup>
+    <ParamSfo Include="assets/sce_sys/param.sfo" />
+    <Icon0 Include="assets/sce_sys/icon0.png" />
+    <Pic0 Include="assets/sce_sys/pic0.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="eboot.bin" />
+  </ItemGroup>
+</Project>

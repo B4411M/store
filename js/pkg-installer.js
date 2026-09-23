@@ -9,6 +9,7 @@ class PKGInstaller {
         this.isInstalling = false;
         this.isPS4 = this.detectPS4();
         this.installQueue = [];
+        this.goldhenUrl = 'http://localhost:12800';
         this.init();
     }
 
@@ -20,6 +21,114 @@ class PKGInstaller {
     init() {
         console.log('PKG Installer initialized');
         console.log('Running on PS4:', this.isPS4);
+    }
+
+    setGoldHENUrl(url) {
+        this.goldhenUrl = url;
+    }
+
+    /**
+     * Send download directly to PS4 notifications via GoldHEN
+     * This uses GoldHEN's built-in download manager which appears in PS4 notifications
+     */
+    async downloadToPS4Notifications(url, title, filename) {
+        if (!this.isPS4) {
+            this.app.showToast('Demo Mode: Download to PS4 notifications only works on PS4', 'info');
+            return { success: true, simulated: true };
+        }
+
+        this.app.showToast('Mengirim ke notifikasi PS4: ' + title, 'info');
+
+        try {
+            // Method 1: GoldHEN download endpoint (appears in PS4 notifications)
+            const response = await fetch(this.goldhenUrl + '/download', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    url: url,
+                    name: title,
+                    filename: filename || title + '.pkg'
+                })
+            });
+
+            if (response.ok) {
+                this.app.showToast('Download dikirim ke notifikasi PS4!', 'success');
+                return { success: true, method: 'goldhen_download' };
+            }
+        } catch (e) {
+            console.log('GoldHEN download endpoint failed:', e);
+        }
+
+        try {
+            // Method 2: Alternative GoldHEN download API
+            const formData = new FormData();
+            formData.append('url', url);
+            formData.append('name', title);
+            formData.append('filename', filename || title + '.pkg');
+
+            const response = await fetch(this.goldhenUrl + '/api/download', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                this.app.showToast('Download dikirim ke notifikasi PS4!', 'success');
+                return { success: true, method: 'goldhen_api_download' };
+            }
+        } catch (e) {
+            console.log('GoldHEN API download failed:', e);
+        }
+
+        try {
+            // Method 3: WebSocket to GoldHEN for download
+            const ws = new WebSocket('ws://localhost:12800');
+            
+            return new Promise((resolve) => {
+                ws.onopen = () => {
+                    ws.send(JSON.stringify({
+                        type: 'download',
+                        url: url,
+                        name: title,
+                        filename: filename || title + '.pkg'
+                    }));
+                    ws.close();
+                };
+                
+                ws.onerror = () => {
+                    console.log('WebSocket download not available');
+                    resolve({ success: false, error: 'WebSocket failed' });
+                };
+                
+                setTimeout(() => {
+                    ws.close();
+                    resolve({ success: false, error: 'WebSocket timeout' });
+                }, 5000);
+            });
+        } catch (e) {
+            console.log('WebSocket download error:', e);
+        }
+
+        try {
+            // Method 4: localStorage IPC for download
+            const downloadData = {
+                action: 'download_pkg',
+                url: url,
+                name: title,
+                filename: filename || title + '.pkg',
+                timestamp: Date.now()
+            };
+            
+            localStorage.setItem('ps4_download_request', JSON.stringify(downloadData));
+            this.app.showToast('Permintaan download dikirim ke payload', 'success');
+            return { success: true, method: 'localstorage_ipc' };
+        } catch (e) {
+            console.log('localStorage IPC failed:', e);
+        }
+
+        this.app.showToast('Tidak dapat mengirim ke notifikasi PS4. GoldHEN mungkin tidak aktif.', 'error');
+        return { success: false, error: 'GoldHEN not available' };
     }
 
     /**

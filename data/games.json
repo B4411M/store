@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "updated": "2026-09-24T00:00:00Z",
+  "games": [
+    {
+      "id": "homebrew-example",
+      "title": "Example Homebrew",
+      "title_id": "HB000001",
+      "type": "homebrew",
+      "category": "homebrew",
+      "version": "1.0.0",
+      "firmware": {
+        "min": "9.00",
+        "max": "13.00"
+      },
+      "size": 524288000,
+      "pkg": {
+        "url": "https://example.com/example.pkg",
+        "sha256": "a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456"
+      },
+      "media": {
+        "icon": "https://example.com/icon.png",
+        "background": "https://example.com/background.jpg"
+      },
+      "screenshots": [
+        "https://example.com/screenshot1.jpg",
+        "https://example.com/screenshot2.jpg",
+        "https://example.com/screenshot3.jpg"
+      ],
+      "description": "Example homebrew application for PS4. This is a demonstration of the store's capabilities.",
+      "author": "Developer Name",
+      "website": "https://github.com/example/homebrew",
+      "source": "https://github.com/example/homebrew",
+      "license": "MIT",
+      "changelog": "v1.0.0 - Initial release\n- Basic functionality\n- PS4 compatibility",
+      "version_history": [
+        {
+          "version": "1.0.0",
+          "date": "2026-01-15",
+          "changes": "Initial release with basic functionality"
+        }
+      ],
+      "featured": true
+    }
+  ]
+}

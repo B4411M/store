@@ -1,0 +1,20 @@
+{
+  "featured": [
+    {
+      "id": "homebrew-example",
+      "title": "Example Homebrew",
+      "type": "homebrew",
+      "category": "Homebrew",
+      "badge": "FEATURED",
+      "image": "https://example.com/featured.jpg",
+      "description": "Aplikasi homebrew contoh untuk demonstrasi"
+    }
+  ],
+  "banners": [
+    {
+      "id": "homebrew-example",
+      "image": "https://example.com/banner.jpg",
+      "link": "homebrew-example"
+    }
+  ]
+}
