@@ -9,7 +9,16 @@ class AdminManager {
         this.editingGameId = null;
         this.deleteGameId = null;
         this.changes = false;
+        this.githubConfig = this.loadGitHubConfig();
         this.init();
+    }
+
+    loadGitHubConfig() {
+        try {
+            return JSON.parse(localStorage.getItem('githubSyncConfig')) || {};
+        } catch (e) {
+            return {};
+        }
     }
 
     // ========== INITIALIZATION ==========
@@ -100,6 +109,7 @@ class AdminManager {
         
         // Auto-download games-data.js after adding game
         this.downloadGamesDataFile();
+        this.pushCatalogToGitHub('Tambah game: ' + newGame.title);
         
         return newGame;
     }
@@ -122,6 +132,7 @@ class AdminManager {
             
             // Auto-download games-data.js after updating game
             this.downloadGamesDataFile();
+            this.pushCatalogToGitHub('Edit game: ' + this.games[index].title);
             
             return this.games[index];
         }
@@ -238,6 +249,105 @@ function formatSize(bytes) {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 }
 `;
+    }
+
+    generateGamesJsonFile() {
+        return JSON.stringify({
+            version: 2,
+            updated: new Date().toISOString(),
+            games: this.games
+        }, null, 2) + '\n';
+    }
+
+    encodeBase64(value) {
+        const bytes = new TextEncoder().encode(value);
+        let binary = '';
+        const chunkSize = 0x8000;
+        for (let index = 0; index < bytes.length; index += chunkSize) {
+            binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
+        }
+        return btoa(binary);
+    }
+
+    async pushGitHubFile(path, content, message) {
+        const { owner, repo, branch, token } = this.githubConfig;
+        const endpoint = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${path}`;
+        const headers = {
+            Accept: 'application/vnd.github+json',
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'X-GitHub-Api-Version': '2022-11-28'
+        };
+        const current = await fetch(`${endpoint}?ref=${encodeURIComponent(branch)}`, { headers });
+        let sha;
+        if (current.ok) {
+            sha = (await current.json()).sha;
+        } else if (current.status !== 404) {
+            throw new Error(`Tidak bisa membaca ${path} (HTTP ${current.status})`);
+        }
+
+        const response = await fetch(endpoint, {
+            method: 'PUT',
+            headers,
+            body: JSON.stringify({
+                message,
+                content: this.encodeBase64(content),
+                branch,
+                ...(sha ? { sha } : {})
+            })
+        });
+        if (!response.ok) {
+            const detail = await response.json().catch(() => ({}));
+            throw new Error(detail.message || `Gagal push ${path} (HTTP ${response.status})`);
+        }
+    }
+
+    async pushCatalogToGitHub(message) {
+        const { owner, repo, branch, token } = this.githubConfig;
+        if (!owner || !repo || !branch || !token) {
+            this.showToast('GitHub Sync belum dikonfigurasi', 'warning');
+            return;
+        }
+
+        this.showToast('Mengirim katalog ke GitHub...', 'info');
+        try {
+            await this.pushGitHubFile('data/games.json', this.generateGamesJsonFile(), message);
+            await this.pushGitHubFile('js/games-data.js', this.generateGamesDataFile(), message);
+            this.showToast('✅ Katalog berhasil di-push ke GitHub', 'success');
+        } catch (error) {
+            console.error('GitHub sync failed:', error);
+            this.showToast('❌ GitHub sync gagal: ' + error.message, 'error');
+        }
+    }
+
+    showGitHubSettings() {
+        document.getElementById('github-owner').value = this.githubConfig.owner || '';
+        document.getElementById('github-repo').value = this.githubConfig.repo || '';
+        document.getElementById('github-branch').value = this.githubConfig.branch || 'main';
+        document.getElementById('github-token').value = this.githubConfig.token || '';
+        this.openModal('github-modal');
+    }
+
+    closeGitHubSettings() {
+        document.getElementById('github-modal').style.display = 'none';
+        document.body.style.overflow = '';
+    }
+
+    async saveGitHubSettings() {
+        const config = {
+            owner: document.getElementById('github-owner').value.trim(),
+            repo: document.getElementById('github-repo').value.trim(),
+            branch: document.getElementById('github-branch').value.trim() || 'main',
+            token: document.getElementById('github-token').value.trim()
+        };
+        if (!config.owner || !config.repo || !config.token) {
+            this.showToast('Owner, repository, dan token wajib diisi', 'error');
+            return;
+        }
+        this.githubConfig = config;
+        localStorage.setItem('githubSyncConfig', JSON.stringify(config));
+        this.closeGitHubSettings();
+        await this.pushCatalogToGitHub('Update katalog dari Admin Dashboard');
     }
 
     renderDownloadButton() {

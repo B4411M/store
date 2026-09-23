@@ -204,6 +204,8 @@ class PS4StoreApp {
             el.textContent = `Terakhir: ${updated}`;
         }
     }
+
+    loadFromCache() {
         try {
             const saved = localStorage.getItem('ps4StoreGames');
             if (saved && JSON.parse(saved).length > 0) {
@@ -244,7 +246,8 @@ class PS4StoreApp {
 
     saveGamesToStorage(games) {
         try {
-            localStorage.setItem('ps4StoreGames', JSON.stringify(games));
+            const normalizedGames = (games || []).map(game => this.normalizeGame(game));
+            localStorage.setItem('ps4StoreGames', JSON.stringify(normalizedGames));
         } catch (e) {
             console.warn('Could not save games to localStorage:', e);
         }
@@ -259,12 +262,28 @@ class PS4StoreApp {
     }
 
     // ========== GAME CATALOG ==========
+    normalizeGame(game) {
+        if (!game || typeof game !== 'object') return game;
+
+        const packageInfo = game.pkg || {};
+        const media = game.media || {};
+        const numericId = Number(game.id);
+
+        return {
+            ...game,
+            id: Number.isNaN(numericId) ? game.id : numericId,
+            url: game.url || packageInfo.url || '',
+            image: game.image || media.icon || '',
+            sha256: game.sha256 || packageInfo.sha256 || ''
+        };
+    }
+
     getGameCatalog() {
         // First, try to load from localStorage (primary)
         try {
             const saved = localStorage.getItem('ps4StoreGames');
             if (saved && JSON.parse(saved).length > 0) {
-                return JSON.parse(saved);
+                return JSON.parse(saved).map(game => this.normalizeGame(game));
             }
         } catch (e) {
             console.warn('Could not load from localStorage:', e);
@@ -273,7 +292,7 @@ class PS4StoreApp {
         // Fall back to embedded PS4_GAME_CATALOG
         try {
             if (typeof PS4_GAME_CATALOG !== 'undefined') {
-                return PS4_GAME_CATALOG;
+                return PS4_GAME_CATALOG.map(game => this.normalizeGame(game));
             }
         } catch (e) {
             console.warn('Could not load embedded catalog:', e);
