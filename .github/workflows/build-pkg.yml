@@ -62,8 +62,11 @@ jobs:
 
       - name: Build OpenOrbis Toolchain
         if: steps.toolchain.outputs.path == ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git clone --recursive --depth 1 https://github.com/OpenOrbis/OpenOrbis.git /tmp/OpenOrbis
+          # Use authenticated clone to avoid rate limits
+          git clone --recursive --depth 1 https://x-access-token:${GITHUB_TOKEN}@github.com/OpenOrbis/OpenOrbis.git /tmp/OpenOrbis
           cd /tmp/OpenOrbis
           # Build with limited parallelism to avoid OOM
           ./build-toolchain.sh 2>&1 | tail -50
@@ -110,8 +113,10 @@ jobs:
 
       - name: Build orbis-pub-gen
         if: steps.check-pubgen.outputs.cached == 'false'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git clone --depth 1 https://github.com/OpenOrbis/orbis-pub-gen.git /tmp/orbis-pub-gen
+          git clone --depth 1 https://x-access-token:${GITHUB_TOKEN}@github.com/OpenOrbis/orbis-pub-gen.git /tmp/orbis-pub-gen
           cd /tmp/orbis-pub-gen
           mkdir build && cd build
           cmake .. -DCMAKE_BUILD_TYPE=Release
