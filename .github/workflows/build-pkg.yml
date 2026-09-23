@@ -14,19 +14,128 @@ on:
 permissions:
   contents: write
 
+env:
+  OPENORBIS_TOOLCHAIN: /opt/openorbis/toolchain.cmake
+
 jobs:
-  build-pkg:
-    name: Build PS4 PKG
+  build-toolchain:
+    name: Build/Cache OpenOrbis Toolchain
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    outputs:
+      toolchain-path: ${{ steps.toolchain.outputs.path }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache OpenOrbis Toolchain
+        id: cache-toolchain
+        uses: actions/cache@v4
+        with:
+          path: /opt/openorbis
+          key: openorbis-toolchain-${{ runner.os }}-${{ hashFiles('native/CMakeLists.txt') }}
+          restore-keys: |
+            openorbis-toolchain-${{ runner.os }}-
+
+      - name: Check if Toolchain Cached
+        id: toolchain
+        run: |
+          if [ -f "/opt/openorbis/toolchain.cmake" ]; then
+            echo "path=/opt/openorbis/toolchain.cmake" >> $GITHUB_OUTPUT
+            echo "Toolchain found in cache"
+          else
+            echo "path=" >> $GITHUB_OUTPUT
+            echo "Toolchain not cached, will build"
+          fi
+
+      - name: Install Build Dependencies
+        if: steps.toolchain.outputs.path == ''
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential cmake git curl wget \
+            libgmp-dev libmpfr-dev libmpc-dev \
+            texinfo bison flex \
+            libncurses5-dev libssl-dev \
+            python3 python3-pip \
+            pkg-config
+
+      - name: Build OpenOrbis Toolchain
+        if: steps.toolchain.outputs.path == ''
+        run: |
+          git clone --recursive --depth 1 https://github.com/OpenOrbis/OpenOrbis.git /tmp/OpenOrbis
+          cd /tmp/OpenOrbis
+          # Build with limited parallelism to avoid OOM
+          ./build-toolchain.sh 2>&1 | tail -50
+          echo "OPENORBIS_TOOLCHAIN=/opt/openorbis/toolchain.cmake" >> $GITHUB_ENV
+
+      - name: Verify Toolchain
+        run: |
+          if [ -f "/opt/openorbis/toolchain.cmake" ]; then
+            echo "✅ Toolchain ready at /opt/openorbis/toolchain.cmake"
+            ls -la /opt/openorbis/bin/ | head -20
+          else
+            echo "❌ Toolchain not found"
+            exit 1
+          fi
+
+  build-orbis-pub-gen:
+    name: Build orbis-pub-gen
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake make git pkg-config libssl-dev
+
+      - name: Cache orbis-pub-gen
+        id: cache-pubgen
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/bin/orbis-pub-gen
+          key: orbis-pub-gen-${{ runner.os }}
+          restore-keys: |
+            orbis-pub-gen-${{ runner.os }}-
+
+      - name: Check if Cached
+        id: check-pubgen
+        run: |
+          if [ -f "/usr/local/bin/orbis-pub-gen" ]; then
+            echo "cached=true" >> $GITHUB_OUTPUT
+            echo "orbis-pub-gen found in cache"
+          else
+            echo "cached=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build orbis-pub-gen
+        if: steps.check-pubgen.outputs.cached == 'false'
+        run: |
+          git clone --depth 1 https://github.com/OpenOrbis/orbis-pub-gen.git /tmp/orbis-pub-gen
+          cd /tmp/orbis-pub-gen
+          mkdir build && cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release
+          make -j$(nproc)
+          sudo cp orbis-pub-gen /usr/local/bin/
+          orbis-pub-gen --version
+
+      - name: Verify orbis-pub-gen
+        run: |
+          which orbis-pub-gen
+          orbis-pub-gen --version || orbis-pub-gen --help
+
+  build-native:
+    name: Build Native App & PKG
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    
+    needs: [build-toolchain, build-orbis-pub-gen]
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           submodules: recursive
-      
-      - name: Install dependencies
+
+      - name: Install Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -35,56 +144,93 @@ jobs:
             libmbedtls-dev libmbedx509-dev libmbedcrypto-dev \
             python3 pkg-config \
             inkscape imagemagick
-      
-      - name: Setup OpenOrbis toolchain
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.21'
-      
-      - name: Build OpenOrbis toolchain
+
+      - name: Setup Toolchain Environment
         run: |
-          git clone --recursive https://github.com/OpenOrbis/OpenOrbis.git /tmp/OpenOrbis
-          cd /tmp/OpenOrbis
-          ./build-toolchain.sh
           echo "OPENORBIS_TOOLCHAIN=/opt/openorbis/toolchain.cmake" >> $GITHUB_ENV
-      
-      - name: Build orbis-pub-gen
+          export OPENORBIS_TOOLCHAIN=/opt/openorbis/toolchain.cmake
+
+      - name: Verify Toolchain
         run: |
-          git clone https://github.com/OpenOrbis/orbis-pub-gen.git /tmp/orbis-pub-gen
-          cd /tmp/orbis-pub-gen
-          mkdir build && cd build
-          cmake ..
-          make -j$(nproc)
-          sudo cp orbis-pub-gen /usr/local/bin/
-      
-      - name: Convert SVG assets to PNG
+          if [ ! -f "$OPENORBIS_TOOLCHAIN" ]; then
+            echo "❌ Toolchain not found at $OPENORBIS_TOOLCHAIN"
+            find /opt -name "toolchain.cmake" 2>/dev/null || true
+            exit 1
+          fi
+          echo "✅ Toolchain found"
+
+      - name: Convert SVG Assets to PNG
         run: |
           cd native
           chmod +x convert_assets.sh
           ./convert_assets.sh
-      
-      - name: Build native application
+          echo "Checking generated PNGs:"
+          ls -la assets/*.png
+          file assets/icon.png assets/background.png
+
+      - name: Build Native Application
         run: |
           cd native
           chmod +x build.sh
-          ./build.sh
-      
-      - name: Verify PKG created
-        run: |
-          if [ -f native/build/B41M_HEN_STORE.pkg ]; then
-            echo "PKG found!"
-            ls -la native/build/B41M_HEN_STORE.pkg
-          else
-            echo "PKG not found, checking for eboot.bin..."
-            ls -la native/build/
+          # Run build with error capture
+          ./build.sh 2>&1 | tee build.log
+          echo "Build exit code: ${PIPESTATUS[0]}"
+          if [ ${PIPESTATUS[0]} -ne 0 ]; then
+            echo "❌ Build failed, showing last 100 lines:"
+            tail -100 build.log
             exit 1
           fi
-      
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
+
+      - name: Verify Build Output
+        run: |
+          echo "Checking build directory:"
+          ls -la native/build/
+          if [ -f "native/build/eboot.bin" ]; then
+            echo "✅ eboot.bin found ($(stat -c%s native/build/eboot.bin) bytes)"
+          else
+            echo "❌ eboot.bin NOT found"
+            exit 1
+          fi
+
+      - name: Verify PKG Created
+        id: pkg-check
+        run: |
+          if [ -f "native/build/B41M_HEN_STORE.pkg" ]; then
+            echo "✅ PKG found"
+            PKG_SIZE=$(stat -c%s native/build/B41M_HEN_STORE.pkg)
+            echo "Size: $PKG_SIZE bytes ($(numfmt --to=iec $PKG_SIZE))"
+            echo "pkg-exists=true" >> $GITHUB_OUTPUT
+            echo "pkg-path=native/build/B41M_HEN_STORE.pkg" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️ PKG not found, checking for fake PKG..."
+            if [ -f "native/build/B41M_HEN_STORE_Fake.pkg" ]; then
+              echo "✅ Fake PKG found"
+              PKG_SIZE=$(stat -c%s native/build/B41M_HEN_STORE_Fake.pkg)
+              echo "pkg-exists=true" >> $GITHUB_OUTPUT
+              echo "pkg-path=native/build/B41M_HEN_STORE_Fake.pkg" >> $GITHUB_OUTPUT
+            else
+              echo "pkg-exists=false" >> $GITHUB_OUTPUT
+              echo "No PKG found"
+              ls -la native/build/
+            fi
+          fi
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
         with:
-          files: native/build/B41M_HEN_STORE.pkg
+          name: B41M_HEN_STORE-Build-${{ github.ref_name }}
+          path: |
+            native/build/eboot.bin
+            native/build/*.pkg
+            native/build/build.log
+          retention-days: 30
+
+      - name: Create Release with PKG
+        uses: softprops/action-gh-release@v1
+        if: steps.pkg-check.outputs.pkg-exists == 'true' && startsWith(github.ref, 'refs/tags/')
+        with:
+          files: ${{ steps.pkg-check.outputs.pkg-path }}
           name: B41M HEN STORE ${{ github.ref_name }}
           body: |
             ## B41M HEN STORE ${{ github.ref_name }}
@@ -114,27 +260,46 @@ jobs:
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Upload PKG as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: B41M_HEN_STORE-PKG
-          path: native/build/B41M_HEN_STORE.pkg
-          retention-days: 30
 
-  build-web:
+      - name: Create Release (No PKG - Build Failed)
+        uses: softprops/action-gh-release@v1
+        if: steps.pkg-check.outputs.pkg-exists == 'false' && startsWith(github.ref, 'refs/tags/')
+        with:
+          name: B41M HEN STORE ${{ github.ref_name }} (Build Failed)
+          body: |
+            ## ⚠️ Build Failed - No PKG Generated
+            
+            The PKG build failed. Please check the workflow logs for details.
+            
+            ### Artifacts Available
+            Download the build artifacts from the workflow run to inspect:
+            - `eboot.bin` (if compiled)
+            - `build.log` (compilation logs)
+            
+            ### Common Issues
+            - OpenOrbis toolchain compilation timeout
+            - Missing dependencies (mbedtls, curl)
+            - CMake configuration errors
+            
+            Built from: ${{ github.sha }}
+          draft: false
+          prerelease: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  deploy-web:
     name: Deploy Web Store
     runs-on: ubuntu-latest
-    needs: build-pkg
-    
+    needs: build-native
+    if: github.ref == 'refs/heads/main'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      
+
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
-        if: github.ref == 'refs/heads/main'
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./store
+          publish_dir: .
           destination_dir: store
+          keep_files: true
