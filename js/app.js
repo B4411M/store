@@ -1725,7 +1725,23 @@ class PS4StoreApp {
 // Initialize app
 function initApp() {
     if (window.app) return; // Prevent double initialization
-    window.app = new PS4StoreApp();
+    
+    // Debug: Write to page to confirm initialization
+    const debugEl = document.createElement('div');
+    debugEl.id = 'debug-init';
+    debugEl.style.cssText = 'position:fixed;top:10px;right:10px;background:#000;color:#0f0;padding:10px;z-index:9999;font:12px monospace;';
+    debugEl.textContent = 'App initializing...';
+    document.body.appendChild(debugEl);
+    
+    try {
+        window.app = new PS4StoreApp();
+        debugEl.textContent = 'App initialized! Games: ' + (window.app.getGameCatalog?.().length || 0);
+        debugEl.style.color = '#0f0';
+    } catch (e) {
+        debugEl.textContent = 'Error: ' + e.message;
+        debugEl.style.color = '#f00';
+        console.error('App init error:', e);
+    }
 }
 
 if (document.readyState === 'loading') {
