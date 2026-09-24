@@ -21,7 +21,7 @@ jobs:
   build-toolchain:
     name: Build/Cache OpenOrbis Toolchain
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 60
     outputs:
       toolchain-path: ${{ steps.toolchain.outputs.path }}
     steps:
@@ -33,19 +33,19 @@ jobs:
         uses: actions/cache@v4
         with:
           path: /opt/openorbis
-          key: openorbis-toolchain-${{ runner.os }}-${{ hashFiles('native/CMakeLists.txt') }}
+          key: openorbis-toolchain-${{ runner.os }}-v2
           restore-keys: |
-            openorbis-toolchain-${{ runner.os }}-
+            openorbis-toolchain-${{ runner.os }}-v2
 
       - name: Check if Toolchain Cached
         id: toolchain
         run: |
-          if [ -f "/opt/openorbis/toolchain.cmake" ]; then
+          if [ -f "/opt/openorbis/toolchain.cmake" ] && [ -x "/opt/openorbis/bin/linux/create-fself" ]; then
             echo "path=/opt/openorbis/toolchain.cmake" >> $GITHUB_OUTPUT
-            echo "Toolchain found in cache"
+            echo "✅ Toolchain found in cache"
           else
             echo "path=" >> $GITHUB_OUTPUT
-            echo "Toolchain not cached, will build"
+            echo "Toolchain not cached or incomplete, will download"
           fi
 
       - name: Install Build Dependencies
@@ -58,24 +58,45 @@ jobs:
             texinfo bison flex \
             libncurses5-dev libssl-dev \
             python3 python3-pip \
-            pkg-config
+            pkg-config xz-utils
 
-      - name: Build OpenOrbis Toolchain
+      - name: Download Pre-built OpenOrbis Toolchain
         if: steps.toolchain.outputs.path == ''
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          curl -fL https://github.com/OpenOrbis/OpenOrbis-PS4-Toolchain/releases/download/v0.5.4/toolchain-llvm-18.tar.gz -o /tmp/openorbis.tar.gz
+          echo "Downloading pre-built OpenOrbis toolchain..."
+          # Use known working release from OpenOrbis
+          TOOLCHAIN_URL="https://github.com/OpenOrbis/OpenOrbis-PS4-Toolchain/releases/download/v0.5.4/toolchain-llvm-18.tar.gz"
+          
+          # Try primary URL
+          if curl -fL "$TOOLCHAIN_URL" -o /tmp/openorbis.tar.gz; then
+            echo "Downloaded from primary URL"
+          else
+            echo "Primary failed, trying mirror..."
+            # Fallback to alternative
+            curl -fL "https://github.com/OpenOrbis/OpenOrbis-PS4-Toolchain/releases/download/v0.5.3/toolchain-llvm-17.tar.gz" -o /tmp/openorbis.tar.gz || exit 1
+          fi
+          
           mkdir -p /opt/openorbis
-          tar -xzf /tmp/openorbis.tar.gz -C /opt/openorbis --strip-components=2 OpenOrbis/PS4Toolchain
+          tar -xzf /tmp/openorbis.tar.gz -C /opt/openorbis --strip-components=1 2>/dev/null || \
+          tar -xzf /tmp/openorbis.tar.gz -C /opt/openorbis --strip-components=2 2>/dev/null || \
+          (echo "Trying alternative extraction..." && tar -xzf /tmp/openorbis.tar.gz -C /opt/openorbis)
+          
+          # Verify structure
+          ls -la /opt/openorbis/
 
       - name: Verify Toolchain
         run: |
-          if [ -x "/opt/openorbis/bin/linux/create-fself" ]; then
+          if [ -f "/opt/openorbis/toolchain.cmake" ] && [ -x "/opt/openorbis/bin/linux/create-fself" ]; then
             echo "✅ OpenOrbis toolchain ready at /opt/openorbis"
-            ls -la /opt/openorbis/bin/linux/ | head -20
+            echo "Toolchain version:"
+            /opt/openorbis/bin/linux/clang --version | head -1
+            /opt/openorbis/bin/linux/create-fself --version 2>&1 | head -1
           else
-            echo "❌ Toolchain not found"
+            echo "❌ Toolchain not found at expected location"
+            echo "Searching for create-fself..."
+            find /opt -name "create-fself" -type f 2>/dev/null | head -5
+            echo "Toolchain.cmake locations:"
+            find /opt -name "toolchain.cmake" -type f 2>/dev/null | head -5
             exit 1
           fi
 
@@ -87,16 +108,16 @@ jobs:
       - name: Install Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake make git pkg-config libssl-dev
+          sudo apt-get install -y cmake make git pkg-config libssl-dev zlib1g-dev
 
       - name: Cache orbis-pub-gen
         id: cache-pubgen
         uses: actions/cache@v4
         with:
           path: /usr/local/bin/orbis-pub-gen
-          key: orbis-pub-gen-${{ runner.os }}
+          key: orbis-pub-gen-v2-${{ runner.os }}
           restore-keys: |
-            orbis-pub-gen-${{ runner.os }}-
+            orbis-pub-gen-v2-${{ runner.os }}-
 
       - name: Check if Cached
         id: check-pubgen
@@ -110,10 +131,8 @@ jobs:
 
       - name: Build orbis-pub-gen
         if: steps.check-pubgen.outputs.cached == 'false'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git clone --depth 1 https://x-access-token:${GITHUB_TOKEN}@github.com/OpenOrbis/orbis-pub-gen.git /tmp/orbis-pub-gen
+          git clone --depth 1 https://github.com/OpenOrbis/orbis-pub-gen.git /tmp/orbis-pub-gen
           cd /tmp/orbis-pub-gen
           mkdir build && cd build
           cmake .. -DCMAKE_BUILD_TYPE=Release
@@ -141,9 +160,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: /opt/openorbis
-          key: openorbis-toolchain-${{ runner.os }}-${{ hashFiles('native/CMakeLists.txt') }}
+          key: openorbis-toolchain-${{ runner.os }}-v2
           restore-keys: |
-            openorbis-toolchain-${{ runner.os }}-
+            openorbis-toolchain-${{ runner.os }}-v2
 
       - name: Install Dependencies
         run: |
@@ -165,30 +184,36 @@ jobs:
         run: |
           if [ ! -x "$OO_PS4_TOOLCHAIN/bin/linux/create-fself" ]; then
             echo "❌ OpenOrbis toolchain not found at $OO_PS4_TOOLCHAIN"
-            find /opt -name "create-fself" 2>/dev/null || true
+            find /opt -name "create-fself" 2>/dev/null | head -5
             exit 1
           fi
-          echo "✅ Toolchain found"
+          echo "✅ Toolchain found and verified"
 
-      - name: Convert SVG Assets to PNG
+      - name: Verify Assets Exist
         run: |
-          cd native
-          chmod +x convert_assets.sh
-          ./convert_assets.sh
-          echo "Checking generated PNGs:"
-          ls -la assets/*.png
-          file assets/icon.png assets/background.png
+          echo "Checking assets..."
+          ls -la native/assets/
+          for f in icon0.png icon.png pic0.png background.png param.sfo; do
+            if [ -f "native/assets/$f" ]; then
+              echo "✅ $f: $(stat -c%s native/assets/$f) bytes"
+            else
+              echo "❌ MISSING: $f"
+              exit 1
+            fi
+          done
 
       - name: Build Native Application
         run: |
           cd native
           chmod +x build.sh
           # Run build with error capture
+          export OO_PS4_TOOLCHAIN=/opt/openorbis
           ./build.sh 2>&1 | tee build.log
-          echo "Build exit code: ${PIPESTATUS[0]}"
-          if [ ${PIPESTATUS[0]} -ne 0 ]; then
-            echo "❌ Build failed, showing last 100 lines:"
-            tail -100 build.log
+          BUILD_EXIT=${PIPESTATUS[0]}
+          echo "Build exit code: $BUILD_EXIT"
+          if [ $BUILD_EXIT -ne 0 ]; then
+            echo "❌ Build failed, showing last 150 lines:"
+            tail -150 build.log
             exit 1
           fi
 
@@ -288,9 +313,10 @@ jobs:
             - `build.log` (compilation logs)
             
             ### Common Issues
-            - OpenOrbis toolchain compilation timeout
-            - Missing dependencies (mbedtls, curl)
+            - OpenOrbis toolchain download/extraction failed
+            - Missing dependencies (mbedtls, curl, clang)
             - CMake configuration errors
+            - Asset files missing
             
             Built from: ${{ github.sha }}
           draft: false
@@ -301,6 +327,7 @@ jobs:
   deploy-web:
     name: Deploy Web Store
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: build-native
     if: github.ref == 'refs/heads/main'
     steps:
