@@ -10,6 +10,7 @@ class PKGInstaller {
         this.isPS4 = this.detectPS4();
         this.installQueue = [];
         this.goldhenUrl = 'http://localhost:12800';
+        this.goldhenWsUrl = 'ws://localhost:12800';
         this.init();
     }
 
@@ -25,6 +26,12 @@ class PKGInstaller {
 
     setGoldHENUrl(url) {
         this.goldhenUrl = url;
+        // Convert HTTP to WS
+        if (url.startsWith('http://')) {
+            this.goldhenWsUrl = 'ws://' + url.substring(7);
+        } else if (url.startsWith('https://')) {
+            this.goldhenWsUrl = 'wss://' + url.substring(8);
+        }
     }
 
     /**
@@ -39,8 +46,8 @@ class PKGInstaller {
 
         this.app.showToast('Mengirim ke notifikasi PS4: ' + title, 'info');
 
+        // Method 1: GoldHEN download endpoint (appears in PS4 notifications) - PRIMARY
         try {
-            // Method 1: GoldHEN download endpoint (appears in PS4 notifications)
             const response = await fetch(this.goldhenUrl + '/download', {
                 method: 'POST',
                 headers: {
@@ -54,15 +61,17 @@ class PKGInstaller {
             });
 
             if (response.ok) {
-                this.app.showToast('Download dikirim ke notifikasi PS4!', 'success');
+                this.app.showToast('✅ Download dikirim ke notifikasi PS4!', 'success');
                 return { success: true, method: 'goldhen_download' };
+            } else {
+                console.log('GoldHEN /download returned:', response.status);
             }
         } catch (e) {
-            console.log('GoldHEN download endpoint failed:', e);
+            console.log('GoldHEN /download failed:', e.message);
         }
 
+        // Method 2: Alternative GoldHEN download API
         try {
-            // Method 2: Alternative GoldHEN download API
             const formData = new FormData();
             formData.append('url', url);
             formData.append('name', title);
@@ -74,44 +83,17 @@ class PKGInstaller {
             });
 
             if (response.ok) {
-                this.app.showToast('Download dikirim ke notifikasi PS4!', 'success');
+                this.app.showToast('✅ Download dikirim ke notifikasi PS4!', 'success');
                 return { success: true, method: 'goldhen_api_download' };
+            } else {
+                console.log('GoldHEN /api/download returned:', response.status);
             }
         } catch (e) {
-            console.log('GoldHEN API download failed:', e);
+            console.log('GoldHEN /api/download failed:', e.message);
         }
 
+        // Method 3: localStorage IPC for download (works with GoldHEN payload)
         try {
-            // Method 3: WebSocket to GoldHEN for download
-            const ws = new WebSocket('ws://localhost:12800');
-            
-            return new Promise((resolve) => {
-                ws.onopen = () => {
-                    ws.send(JSON.stringify({
-                        type: 'download',
-                        url: url,
-                        name: title,
-                        filename: filename || title + '.pkg'
-                    }));
-                    ws.close();
-                };
-                
-                ws.onerror = () => {
-                    console.log('WebSocket download not available');
-                    resolve({ success: false, error: 'WebSocket failed' });
-                };
-                
-                setTimeout(() => {
-                    ws.close();
-                    resolve({ success: false, error: 'WebSocket timeout' });
-                }, 5000);
-            });
-        } catch (e) {
-            console.log('WebSocket download error:', e);
-        }
-
-        try {
-            // Method 4: localStorage IPC for download
             const downloadData = {
                 action: 'download_pkg',
                 url: url,
@@ -121,14 +103,52 @@ class PKGInstaller {
             };
             
             localStorage.setItem('ps4_download_request', JSON.stringify(downloadData));
-            this.app.showToast('Permintaan download dikirim ke payload', 'success');
+            this.app.showToast('✅ Permintaan download dikirim ke GoldHEN payload', 'success');
             return { success: true, method: 'localstorage_ipc' };
         } catch (e) {
-            console.log('localStorage IPC failed:', e);
+            console.log('localStorage IPC failed:', e.message);
         }
 
-        this.app.showToast('Tidak dapat mengirim ke notifikasi PS4. GoldHEN mungkin tidak aktif.', 'error');
-        return { success: false, error: 'GoldHEN not available' };
+        // Method 4: WebSocket to GoldHEN (last resort, silent fail)
+        try {
+            const wsUrl = this.goldhenWsUrl;
+            const ws = new WebSocket(wsUrl);
+            
+            await new Promise((resolve) => {
+                const timeout = setTimeout(() => {
+                    ws.close();
+                    resolve({ success: false, error: 'WebSocket timeout' });
+                }, 3000);
+                
+                ws.onopen = () => {
+                    clearTimeout(timeout);
+                    ws.send(JSON.stringify({
+                        type: 'download',
+                        url: url,
+                        name: title,
+                        filename: filename || title + '.pkg'
+                    }));
+                    ws.close();
+                    resolve({ success: true, method: 'websocket' });
+                };
+                
+                ws.onerror = () => {
+                    clearTimeout(timeout);
+                    // Silent fail - don't show error to user
+                    resolve({ success: false, error: 'WebSocket not available' });
+                };
+                
+                ws.onclose = () => {
+                    clearTimeout(timeout);
+                };
+            });
+        } catch (e) {
+            console.log('WebSocket download error:', e.message);
+        }
+
+        // If all methods fail
+        this.app.showToast('❌ Gagal kirim ke notifikasi PS4. Pastikan GoldHEN aktif.', 'error');
+        return { success: false, error: 'All methods failed. GoldHEN may not be running.' };
     }
 
     /**
