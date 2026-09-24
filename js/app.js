@@ -3,6 +3,9 @@
  * Uses localStorage for game data (persistent across refresh)
  */
 
+// Debug: Immediate write to confirm script execution
+document.write('<div id="debug-script-load" style="position:fixed;top:0;left:0;background:#f00;color:#fff;padding:5px;z-index:9999;">app.js LOADED</div>');
+
 class PS4StoreApp {
     constructor() {
         this.api = new StoreAPI();
