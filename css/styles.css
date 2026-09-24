@@ -1263,7 +1263,7 @@ body {
     .header-content { height: auto; padding: 14px 0; }
     .logo-section { width: 100%; justify-content: space-between; }
     .main-nav { min-width: 0; max-width: 100%; }
-    .header-actions { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) repeat(6, 42px); gap: 8px; }
+    .header-actions { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) repeat(7, 42px); gap: 8px; }
     .search-box { min-width: 0; width: auto; }
     .search-box input { width: 100%; }
     .hero-section { padding: 58px 20px 52px; }
