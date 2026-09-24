@@ -1726,20 +1726,16 @@ class PS4StoreApp {
 function initApp() {
     if (window.app) return; // Prevent double initialization
     
-    // Debug: Write to page to confirm initialization
-    const debugEl = document.createElement('div');
-    debugEl.id = 'debug-init';
-    debugEl.style.cssText = 'position:fixed;top:10px;right:10px;background:#000;color:#0f0;padding:10px;z-index:9999;font:12px monospace;';
-    debugEl.textContent = 'App initializing...';
-    document.body.appendChild(debugEl);
+    // Debug: Write to page to confirm initialization (visible in page source)
+    document.write('<div id="debug-init" style="position:fixed;top:10px;right:10px;background:#000;color:#0f0;padding:10px;z-index:9999;font:12px monospace;">App init started...</div>');
     
     try {
         window.app = new PS4StoreApp();
-        debugEl.textContent = 'App initialized! Games: ' + (window.app.getGameCatalog?.().length || 0);
-        debugEl.style.color = '#0f0';
+        document.getElementById('debug-init').textContent = 'App initialized! Games: ' + (window.app.getGameCatalog?.().length || 0);
+        document.getElementById('debug-init').style.color = '#0f0';
     } catch (e) {
-        debugEl.textContent = 'Error: ' + e.message;
-        debugEl.style.color = '#f00';
+        document.getElementById('debug-init').textContent = 'Error: ' + e.message;
+        document.getElementById('debug-init').style.color = '#f00';
         console.error('App init error:', e);
     }
 }
