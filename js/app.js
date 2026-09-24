@@ -1726,3 +1726,8 @@ document.addEventListener('DOMContentLoaded', () => {
     window.app = new PS4StoreApp();
 });
 
+// Handle case where DOMContentLoaded already fired (scripts at end of body)
+if (document.readyState !== 'loading') {
+    window.app = new PS4StoreApp();
+}
+
