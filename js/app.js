@@ -1235,9 +1235,16 @@ class PS4StoreApp {
             const result = await this.pkgInstaller.testGoldHENConnection();
             if (resultEl) {
                 if (result.available) {
-                    resultEl.innerHTML = '<span style="color: var(--ps-success);">✅ GoldHEN terhubung di ' + this.goldhenUrl + (result.cached ? ' (cached)' : '') + '</span>';
+                    const methodInfo = result.method ? ` (${result.method})` : (result.cached ? ' (cached)' : '');
+                    resultEl.innerHTML = '<span style="color: var(--ps-success);">✅ GoldHEN terhubung di ' + this.goldhenUrl + methodInfo + '</span>';
+                    // Also show in toast with method
+                    this.showToast('✅ GoldHEN terhubung' + methodInfo, 'success');
                 } else {
                     resultEl.innerHTML = '<span style="color: var(--ps-error);">❌ GoldHEN tidak terhubung: ' + (result.reason || 'Connection failed') + '</span>';
+                    // Show detailed troubleshooting
+                    setTimeout(() => {
+                        this.showToast('💡 Cek: 1) GoldHEN jalan? 2) IP benar? 3) Port 12800? 4) Same WiFi?', 'warning');
+                    }, 1500);
                 }
             }
         } catch (e) {

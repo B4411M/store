@@ -55,8 +55,58 @@ class PKGInstaller {
 
         this.app.showToast('Memeriksa koneksi GoldHEN...', 'info');
 
+        // Test 1: Try with no-cors mode (bypass CORS check)
         try {
-            // Test with a simple HEAD request to the root
+            this.app.showToast('Test 1: Koneksi dasar (no-cors)...', 'info');
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 5000);
+            
+            const response = await fetch(this.goldhenUrl, {
+                method: 'GET',
+                signal: controller.signal,
+                mode: 'no-cors'  // Bypass CORS - will succeed if server responds
+            });
+            
+            clearTimeout(timeout);
+            
+            // With no-cors, response.ok is always false but no error thrown = server reachable
+            if (response.type === 'opaque') {
+                this.goldhenAvailable = true;
+                this.lastConnectionTest = now;
+                this.app.showToast('✅ GoldHEN terdeteksi (basic): ' + this.goldhenUrl, 'success');
+                return { available: true, method: 'no-cors' };
+            }
+        } catch (e) {
+            console.log('Test 1 failed:', e.message);
+        }
+
+        // Test 2: Try with CORS (if GoldHEN supports it)
+        try {
+            this.app.showToast('Test 2: Koneksi CORS...', 'info');
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 5000);
+            
+            const response = await fetch(this.goldhenUrl, {
+                method: 'GET',
+                signal: controller.signal,
+                mode: 'cors'
+            });
+            
+            clearTimeout(timeout);
+            
+            if (response.ok || response.status === 404) {
+                this.goldhenAvailable = true;
+                this.lastConnectionTest = now;
+                this.app.showToast('✅ GoldHEN terdeteksi (CORS): ' + this.goldhenUrl, 'success');
+                return { available: true, method: 'cors' };
+            }
+        } catch (e) {
+            console.log('Test 2 failed:', e.message);
+        }
+
+        // Test 3: Try HEAD request
+        try {
+            this.app.showToast('Test 3: HEAD request...', 'info');
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), 5000);
             
@@ -69,19 +119,46 @@ class PKGInstaller {
             clearTimeout(timeout);
             
             if (response.ok || response.status === 404) {
-                // Server responds (even 404 means server is up)
                 this.goldhenAvailable = true;
                 this.lastConnectionTest = now;
-                this.app.showToast('✅ GoldHEN terdeteksi: ' + this.goldhenUrl, 'success');
-                return { available: true };
+                this.app.showToast('✅ GoldHEN terdeteksi (HEAD): ' + this.goldhenUrl, 'success');
+                return { available: true, method: 'head' };
             }
         } catch (e) {
-            console.log('GoldHEN connection test failed:', e.message);
+            console.log('Test 3 failed:', e.message);
         }
 
+        // Test 4: Try GoldHEN download endpoint directly
+        try {
+            this.app.showToast('Test 4: GoldHEN /download endpoint...', 'info');
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 5000);
+            
+            const response = await fetch(this.goldhenUrl + '/download', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: 'test', name: 'test', filename: 'test.pkg' }),
+                signal: controller.signal,
+                mode: 'cors'
+            });
+            
+            clearTimeout(timeout);
+            
+            // Even 400/405/500 means server is up and responding
+            if (response.status !== 0) {
+                this.goldhenAvailable = true;
+                this.lastConnectionTest = now;
+                this.app.showToast('✅ GoldHEN API terdeteksi: ' + this.goldhenUrl, 'success');
+                return { available: true, method: 'api' };
+            }
+        } catch (e) {
+            console.log('Test 4 failed:', e.message);
+        }
+
+        // All tests failed
         this.goldhenAvailable = false;
-        this.app.showToast('❌ GoldHEN tidak terdeteksi di ' + this.goldhenUrl, 'error');
-        return { available: false, reason: 'Connection failed' };
+        this.app.showToast('❌ GoldHEN tidak terdeteksi di ' + this.goldhenUrl + ' (cek console F12)', 'error');
+        return { available: false, reason: 'All connection tests failed' };
     }
 
     /**
