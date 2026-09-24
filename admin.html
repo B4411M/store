@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>B41M HEN Store - Admin Dashboard</title>
-    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/styles.css?v=20260924">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚙️</text></svg>">
 </head>
 <body>
@@ -470,6 +470,57 @@
 .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: var(--ps-light-blue); }
 .form-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 25px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); }
 .admin-modal { max-width: 550px; }
+
+/* Refined admin workspace */
+body:has(.admin-header) {
+    background-color: #071018;
+    background-image: linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
+    background-size: 36px 36px;
+    font-family: "Avenir Next", "Helvetica Neue", sans-serif;
+}
+.admin-header {
+    background: rgba(7, 16, 24, 0.94);
+    border-bottom: 1px solid rgba(242,184,75,0.45);
+    padding: 18px 30px;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    backdrop-filter: blur(12px);
+}
+.admin-logo h1 { font-size: 18px; letter-spacing: -0.01em; }
+.admin-actions { gap: 8px; }
+.btn { border-radius: 5px; padding: 10px 14px; }
+.btn-primary, .btn-info { background: var(--ps-light-blue); }
+.btn-success { background: #238b72; }
+.admin-stats { gap: 12px; padding-top: 28px; }
+.stat-card { background: rgba(16,28,39,0.92); border: 1px solid rgba(159,178,194,0.12); border-radius: 7px; padding: 18px; }
+.stat-card:hover { border-color: rgba(26,167,161,0.45); transform: translateY(-2px); }
+.stat-card.highlight { background: linear-gradient(135deg, #0b3944, #087f83); border-color: rgba(26,167,161,0.7); }
+.admin-filters { padding-top: 12px; }
+.filter-group { background: rgba(16,28,39,0.7); padding: 8px; border-radius: 5px; }
+.filter-group select, .filter-group input { background: #10212d; border-color: rgba(159,178,194,0.16); border-radius: 4px; }
+.admin-game-list { padding-top: 28px; }
+.list-header h2 { font-size: 22px; }
+.item-count { background: rgba(26,167,161,0.14); color: #b9f1ed; border: 1px solid rgba(26,167,161,0.28); border-radius: 4px; }
+.game-table-container { background: rgba(16,28,39,0.92); border: 1px solid rgba(159,178,194,0.12); border-radius: 7px; box-shadow: var(--shadow-sm); }
+.game-table th { background: #0b1822; color: #9fb2c2; }
+.game-table th, .game-table td { padding: 14px 15px; }
+.game-table tbody tr:hover { background: rgba(26,167,161,0.08); }
+.action-buttons button { border-radius: 4px; }
+.form-group input, .form-group select, .form-group textarea { background: #10212d; border-color: rgba(159,178,194,0.16); border-radius: 5px; }
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus, .filter-group input:focus { border-color: var(--ps-light-blue); box-shadow: 0 0 0 3px rgba(26,167,161,0.12); }
+.ps-modal { border: 1px solid rgba(159,178,194,0.16); border-radius: 8px; }
+.modal-header, .modal-footer { background: #0b1822; }
+.admin-footer { background: #0a151e; }
+
+@media (max-width: 768px) {
+    .admin-header { padding: 16px 18px; align-items: stretch; }
+    .admin-logo { justify-content: center; text-align: center; }
+    .admin-actions .btn { flex: 1 1 calc(50% - 8px); justify-content: center; }
+    .admin-stats, .admin-filters, .admin-game-list { padding-left: 18px; padding-right: 18px; }
+    .filter-group { width: 100%; justify-content: space-between; }
+    .filter-group select, .filter-group input { flex: 1; min-width: 0; }
+}
 
 @media (max-width: 768px) {
     .admin-header { flex-direction: column; gap: 15px; }
