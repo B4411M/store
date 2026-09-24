@@ -128,7 +128,7 @@ const PS4_GAME_CATALOG = [
         size: 107374182,
         image: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEh_QYayD0v4CM_30PrN1iUZEZd5iCB9WXbkb5q4NFHvVgnxEUoAi6-c_KYjVnBXfs_Fhz9PeH87s8kWU5hOM6p0BYG-P-ndM_IC0zXtB57_hi7PZ7qDEH2DPU9En0IIeeT2x4Mb-6bgNkBNB_ZQH68ak3lQTqyFJ75LS1TAzf4yM1eNQcypShuLC-cB728x/w400-h215/Minecraft%20PlayStation%204%20Edition.jpg",
         description: "Game sandbox legendaris. Bangun, tambang, dan bertahan hidup di dunia blok!",
-        url: "https://eeur1.akirabox.com/uploads/users/AY2xm0Ao3RO1/coNj1B2ssNUoil3Lade-%5BPS4ID%5D-minecraft.v1.00-00265.pkg?access=QOhxGZktGayZTY0QGawI2bytmN4kDd2J2ZsZTb",
+        url: "https://am.vikingfile.com/download/koBWt5RcNs/%5BTelegram PlayStation Pulse%5D Minecraft PlayStation 4 Edition CUSA00265 v1.00 %5B1.70%5D OPOISSO893.pkg?md5=MlpyOCv7JngEm3H_wI5OeA&expires=1790285496",
         rating: "E10+",
         publisher: "Mojang Studios",
         downloads: 0,
