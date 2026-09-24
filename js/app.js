@@ -1175,6 +1175,8 @@ class PS4StoreApp {
                             <label style="display: block; margin-bottom: 8px; font-weight: 500;">🌐 GoldHEN URL</label>
                             <input type="url" id="goldhen-url-input" placeholder="http://localhost:12800" style="width: 100%; padding: 12px; background: var(--ps-light-gray); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: var(--ps-text); font-size: 14px;">
                             <p style="font-size: 12px; color: var(--ps-text-secondary); margin-top: 5px;">URL endpoint GoldHEN untuk download ke notifikasi PS4</p>
+                            <button class="ps-btn-secondary" onclick="app.testGoldHENConnection()" style="margin-top: 10px; font-size: 12px; padding: 8px 16px;">🔍 Test Koneksi GoldHEN</button>
+                            <div id="goldhen-test-result" style="margin-top: 8px; font-size: 12px; min-height: 18px;"></div>
                         </div>
                         <div class="setting-group" style="margin-bottom: 20px;">
                             <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
@@ -1223,6 +1225,24 @@ class PS4StoreApp {
         if (keepPkgToggle) keepPkgToggle.checked = localStorage.getItem('keepPkgAfterInstall') === 'true';
 
         this.openModal('settings-modal');
+    }
+
+    async testGoldHENConnection() {
+        const resultEl = document.getElementById('goldhen-test-result');
+        if (resultEl) resultEl.innerHTML = '<span style="color: var(--ps-light-blue);">🔄 Memeriksa koneksi GoldHEN...</span>';
+        
+        try {
+            const result = await this.pkgInstaller.testGoldHENConnection();
+            if (resultEl) {
+                if (result.available) {
+                    resultEl.innerHTML = '<span style="color: var(--ps-success);">✅ GoldHEN terhubung di ' + this.goldhenUrl + (result.cached ? ' (cached)' : '') + '</span>';
+                } else {
+                    resultEl.innerHTML = '<span style="color: var(--ps-error);">❌ GoldHEN tidak terhubung: ' + (result.reason || 'Connection failed') + '</span>';
+                }
+            }
+        } catch (e) {
+            if (resultEl) resultEl.innerHTML = '<span style="color: var(--ps-error);">❌ Error: ' + e.message + '</span>';
+        }
     }
 
     saveSettings() {

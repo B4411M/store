@@ -22,6 +22,8 @@ class PKGInstaller {
     init() {
         console.log('PKG Installer initialized');
         console.log('Running on PS4:', this.isPS4);
+        this.goldhenAvailable = false;
+        this.lastConnectionTest = 0;
     }
 
     setGoldHENUrl(url) {
@@ -31,6 +33,84 @@ class PKGInstaller {
             this.goldhenWsUrl = 'ws://' + url.substring(7);
         } else if (url.startsWith('https://')) {
             this.goldhenWsUrl = 'wss://' + url.substring(8);
+        }
+        // Reset connection test when URL changes
+        this.goldhenAvailable = false;
+        this.lastConnectionTest = 0;
+    }
+
+    /**
+     * Test GoldHEN connection
+     */
+    async testGoldHENConnection() {
+        if (!this.isPS4) {
+            return { available: false, reason: 'Not on PS4' };
+        }
+
+        const now = Date.now();
+        // Cache test result for 30 seconds
+        if (this.goldhenAvailable && (now - this.lastConnectionTest) < 30000) {
+            return { available: true, cached: true };
+        }
+
+        this.app.showToast('Memeriksa koneksi GoldHEN...', 'info');
+
+        try {
+            // Test with a simple HEAD request to the root
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 5000);
+            
+            const response = await fetch(this.goldhenUrl, {
+                method: 'HEAD',
+                signal: controller.signal,
+                mode: 'cors'
+            });
+            
+            clearTimeout(timeout);
+            
+            if (response.ok || response.status === 404) {
+                // Server responds (even 404 means server is up)
+                this.goldhenAvailable = true;
+                this.lastConnectionTest = now;
+                this.app.showToast('✅ GoldHEN terdeteksi: ' + this.goldhenUrl, 'success');
+                return { available: true };
+            }
+        } catch (e) {
+            console.log('GoldHEN connection test failed:', e.message);
+        }
+
+        this.goldhenAvailable = false;
+        this.app.showToast('❌ GoldHEN tidak terdeteksi di ' + this.goldhenUrl, 'error');
+        return { available: false, reason: 'Connection failed' };
+    }
+
+    /**
+     * Direct browser download fallback
+     */
+    async directBrowserDownload(url, filename, title) {
+        this.app.showToast('Mencoba download langsung via browser...', 'info');
+        
+        try {
+            const response = await fetch(url, { method: 'HEAD', mode: 'cors' });
+            if (!response.ok) {
+                throw new Error('File tidak ditemukan (HTTP ' + response.status + ')');
+            }
+            
+            // Try to download via anchor click
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename || title + '.pkg';
+            a.target = '_blank';
+            a.rel = 'noopener noreferrer';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            
+            this.app.showToast('✅ Download dimulai via browser. Cek tab download browser.', 'success');
+            return { success: true, method: 'browser_direct' };
+        } catch (e) {
+            console.log('Direct browser download failed:', e.message);
+            throw e;
         }
     }
 
@@ -44,7 +124,19 @@ class PKGInstaller {
             return { success: true, simulated: true };
         }
 
-        this.app.showToast('Mengirim ke notifikasi PS4: ' + title, 'info');
+        // First, test GoldHEN connection
+        const connectionTest = await this.testGoldHENConnection();
+        
+        if (!connectionTest.available) {
+            this.app.showToast('GoldHEN tidak terhubung. Mencoba download langsung...', 'warning');
+            try {
+                return await this.directBrowserDownload(url, filename, title);
+            } catch (e) {
+                return { success: false, error: 'GoldHEN tidak terhubung & download langsung gagal: ' + e.message };
+            }
+        }
+
+        this.app.showToast('GoldHEN terhubung. Mengirim download ke notifikasi PS4...', 'info');
 
         // Method 1: GoldHEN download endpoint (appears in PS4 notifications) - PRIMARY
         try {
@@ -64,7 +156,7 @@ class PKGInstaller {
                 this.app.showToast('✅ Download dikirim ke notifikasi PS4!', 'success');
                 return { success: true, method: 'goldhen_download' };
             } else {
-                console.log('GoldHEN /download returned:', response.status);
+                console.log('GoldHEN /download returned:', response.status, response.statusText);
             }
         } catch (e) {
             console.log('GoldHEN /download failed:', e.message);
@@ -86,7 +178,7 @@ class PKGInstaller {
                 this.app.showToast('✅ Download dikirim ke notifikasi PS4!', 'success');
                 return { success: true, method: 'goldhen_api_download' };
             } else {
-                console.log('GoldHEN /api/download returned:', response.status);
+                console.log('GoldHEN /api/download returned:', response.status, response.statusText);
             }
         } catch (e) {
             console.log('GoldHEN /api/download failed:', e.message);
@@ -146,9 +238,14 @@ class PKGInstaller {
             console.log('WebSocket download error:', e.message);
         }
 
-        // If all methods fail
-        this.app.showToast('❌ Gagal kirim ke notifikasi PS4. Pastikan GoldHEN aktif.', 'error');
-        return { success: false, error: 'All methods failed. GoldHEN may not be running.' };
+        // If all GoldHEN methods fail, try direct browser download
+        this.app.showToast('Semua metode GoldHEN gagal. Mencoba download langsung...', 'warning');
+        try {
+            return await this.directBrowserDownload(url, filename, title);
+        } catch (e) {
+            this.app.showToast('❌ Semua metode download gagal: ' + e.message, 'error');
+            return { success: false, error: 'All methods failed: ' + e.message };
+        }
     }
 
     /**
