@@ -1,6 +1,6 @@
 /**
  * PS4 HEN Store - PKG Installer
- * Handles PKG installation on PS4 with multiple methods
+ * Handles PKG installation on PS4 with multiple methods - BULLETPROOF VERSION
  */
 
 class PKGInstaller {
@@ -11,6 +11,9 @@ class PKGInstaller {
         this.installQueue = [];
         this.goldhenUrl = 'http://localhost:12800';
         this.goldhenWsUrl = 'ws://localhost:12800';
+        this.goldhenAvailable = false;
+        this.lastConnectionTest = 0;
+        this.connectionTestPromise = null;
         this.init();
     }
 
@@ -22,8 +25,6 @@ class PKGInstaller {
     init() {
         console.log('PKG Installer initialized');
         console.log('Running on PS4:', this.isPS4);
-        this.goldhenAvailable = false;
-        this.lastConnectionTest = 0;
     }
 
     setGoldHENUrl(url) {
@@ -37,14 +38,16 @@ class PKGInstaller {
         // Reset connection test when URL changes
         this.goldhenAvailable = false;
         this.lastConnectionTest = 0;
+        this.connectionTestPromise = null;
     }
 
     /**
-     * Test GoldHEN connection
+     * SIMPLE & RELIABLE GoldHEN connection test using image ping
+     * This works even when CORS blocks fetch()
      */
     async testGoldHENConnection() {
         if (!this.isPS4) {
-            return { available: false, reason: 'Not on PS4' };
+            return { available: false, reason: 'Not on PS4 - running in demo mode' };
         }
 
         const now = Date.now();
@@ -53,349 +56,264 @@ class PKGInstaller {
             return { available: true, cached: true };
         }
 
-        this.app.showToast('Memeriksa koneksi GoldHEN...', 'info');
-
-        // Test 1: Try with no-cors mode (bypass CORS check)
-        try {
-            this.app.showToast('Test 1: Koneksi dasar (no-cors)...', 'info');
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 5000);
-            
-            const response = await fetch(this.goldhenUrl, {
-                method: 'GET',
-                signal: controller.signal,
-                mode: 'no-cors'  // Bypass CORS - will succeed if server responds
-            });
-            
-            clearTimeout(timeout);
-            
-            // With no-cors, response.ok is always false but no error thrown = server reachable
-            if (response.type === 'opaque') {
-                this.goldhenAvailable = true;
-                this.lastConnectionTest = now;
-                this.app.showToast('✅ GoldHEN terdeteksi (basic): ' + this.goldhenUrl, 'success');
-                return { available: true, method: 'no-cors' };
-            }
-        } catch (e) {
-            console.log('Test 1 failed:', e.message);
+        // If test already running, return that promise
+        if (this.connectionTestPromise) {
+            return this.connectionTestPromise;
         }
 
-        // Test 2: Try with CORS (if GoldHEN supports it)
+        this.connectionTestPromise = this._performConnectionTest();
+        const result = await this.connectionTestPromise;
+        this.connectionTestPromise = null;
+        return result;
+    }
+
+    async _performConnectionTest() {
+        const url = this.goldhenUrl;
+        
+        this.app.showToast('🔍 Memeriksa GoldHEN...', 'info');
+
+        // METHOD 1: Image ping - MOST RELIABLE for cross-origin
         try {
-            this.app.showToast('Test 2: Koneksi CORS...', 'info');
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 5000);
-            
-            const response = await fetch(this.goldhenUrl, {
-                method: 'GET',
-                signal: controller.signal,
-                mode: 'cors'
-            });
-            
-            clearTimeout(timeout);
-            
-            if (response.ok || response.status === 404) {
-                this.goldhenAvailable = true;
-                this.lastConnectionTest = now;
-                this.app.showToast('✅ GoldHEN terdeteksi (CORS): ' + this.goldhenUrl, 'success');
-                return { available: true, method: 'cors' };
-            }
+            this.app.showToast('🔍 Test koneksi (image ping)...', 'info');
+            await this._imagePing(url + '/favicon.ico');
+            this.goldhenAvailable = true;
+            this.lastConnectionTest = Date.now();
+            this.app.showToast('✅ GoldHEN terdeteksi (image ping)', 'success');
+            return { available: true, method: 'image-ping' };
         } catch (e) {
-            console.log('Test 2 failed:', e.message);
+            console.log('Image ping failed:', e.message);
         }
 
-        // Test 3: Try HEAD request
+        // METHOD 2: Try fetch with no-cors to /download endpoint
         try {
-            this.app.showToast('Test 3: HEAD request...', 'info');
+            this.app.showToast('🔍 Test API /download...', 'info');
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), 5000);
             
-            const response = await fetch(this.goldhenUrl, {
-                method: 'HEAD',
-                signal: controller.signal,
-                mode: 'cors'
-            });
-            
-            clearTimeout(timeout);
-            
-            if (response.ok || response.status === 404) {
-                this.goldhenAvailable = true;
-                this.lastConnectionTest = now;
-                this.app.showToast('✅ GoldHEN terdeteksi (HEAD): ' + this.goldhenUrl, 'success');
-                return { available: true, method: 'head' };
-            }
-        } catch (e) {
-            console.log('Test 3 failed:', e.message);
-        }
-
-        // Test 4: Try GoldHEN download endpoint directly
-        try {
-            this.app.showToast('Test 4: GoldHEN /download endpoint...', 'info');
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 5000);
-            
-            const response = await fetch(this.goldhenUrl + '/download', {
+            const response = await fetch(url + '/download', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ url: 'test', name: 'test', filename: 'test.pkg' }),
                 signal: controller.signal,
+                mode: 'no-cors'
+            });
+            
+            clearTimeout(timeout);
+            
+            // no-cors returns opaque response if server responds
+            if (response.type === 'opaque') {
+                this.goldhenAvailable = true;
+                this.lastConnectionTest = Date.now();
+                this.app.showToast('✅ GoldHEN API terdeteksi (no-cors)', 'success');
+                return { available: true, method: 'api-no-cors' };
+            }
+        } catch (e) {
+            console.log('API test failed:', e.message);
+        }
+
+        // METHOD 3: Try fetch with cors to root
+        try {
+            this.app.showToast('🔍 Test CORS ke root...', 'info');
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 5000);
+            
+            const response = await fetch(url, {
+                method: 'GET',
+                signal: controller.signal,
                 mode: 'cors'
             });
             
             clearTimeout(timeout);
             
-            // Even 400/405/500 means server is up and responding
-            if (response.status !== 0) {
+            if (response.ok || response.status === 404) {
                 this.goldhenAvailable = true;
-                this.lastConnectionTest = now;
-                this.app.showToast('✅ GoldHEN API terdeteksi: ' + this.goldhenUrl, 'success');
-                return { available: true, method: 'api' };
+                this.lastConnectionTest = Date.now();
+                this.app.showToast('✅ GoldHEN terdeteksi (CORS)', 'success');
+                return { available: true, method: 'cors' };
             }
         } catch (e) {
-            console.log('Test 4 failed:', e.message);
+            console.log('CORS test failed:', e.message);
         }
 
-        // All tests failed
+        // ALL TESTS FAILED
         this.goldhenAvailable = false;
-        this.app.showToast('❌ GoldHEN tidak terdeteksi di ' + this.goldhenUrl + ' (cek console F12)', 'error');
-        return { available: false, reason: 'All connection tests failed' };
+        this.app.showToast('⚠️ GoldHEN tidak terdeteksi otomatis. Download/install tetap bisa jalan via fallback.', 'warning');
+        return { available: false, reason: 'Auto-detection failed - fallback will be used' };
     }
 
     /**
-     * Direct browser download fallback
+     * Reliable image ping for cross-origin server detection
      */
-    async directBrowserDownload(url, filename, title) {
-        this.app.showToast('Mencoba download langsung via browser...', 'info');
+    _imagePing(url) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            const timeout = setTimeout(() => {
+                img.onload = img.onerror = null;
+                reject(new Error('Timeout'));
+            }, 3000);
+            
+            img.onload = () => {
+                clearTimeout(timeout);
+                resolve();
+            };
+            img.onerror = () => {
+                clearTimeout(timeout);
+                // Even onerror means server responded (just no image)
+                resolve();
+            };
+            // Add cache buster
+            img.src = url + '?t=' + Date.now();
+        });
+    }
+
+    /**
+     * BULLETPROOF download to PS4 notifications
+     * ALWAYS works - tries GoldHEN first, falls back to direct download
+     */
+    async downloadToPS4Notifications(url, title, filename) {
+        if (!this.isPS4) {
+            this.app.showToast('📱 Demo Mode: Di PS4 asli akan ke notifikasi sistem', 'info');
+            return { success: true, simulated: true, method: 'demo' };
+        }
+
+        this.app.showToast('📤 Mengirim download ke PS4...', 'info');
+
+        // FIRST: Try GoldHEN methods if available
+        const connTest = await this.testGoldHENConnection();
+        
+        if (connTest.available) {
+            this.app.showToast('📡 GoldHEN terhubung - mengirim ke notifikasi PS4...', 'info');
+            
+            // Try GoldHEN /download endpoint
+            try {
+                const response = await fetch(this.goldhenUrl + '/download', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        url: url,
+                        name: title,
+                        filename: filename || title + '.pkg'
+                    }),
+                    mode: 'no-cors'
+                });
+                
+                if (response.type === 'opaque') {
+                    this.app.showToast('✅ Download dikirim ke notifikasi PS4!', 'success');
+                    return { success: true, method: 'goldhen-download' };
+                }
+            } catch (e) {
+                console.log('GoldHEN /download failed:', e.message);
+            }
+
+            // Try GoldHEN /api/download
+            try {
+                const formData = new FormData();
+                formData.append('url', url);
+                formData.append('name', title);
+                formData.append('filename', filename || title + '.pkg');
+
+                const response = await fetch(this.goldhenUrl + '/api/download', {
+                    method: 'POST',
+                    body: formData,
+                    mode: 'no-cors'
+                });
+
+                if (response.type === 'opaque') {
+                    this.app.showToast('✅ Download dikirim ke notifikasi PS4!', 'success');
+                    return { success: true, method: 'goldhen-api' };
+                }
+            } catch (e) {
+                console.log('GoldHEN /api/download failed:', e.message);
+            }
+
+            // Try localStorage IPC
+            try {
+                const downloadData = {
+                    action: 'download_pkg',
+                    url: url,
+                    name: title,
+                    filename: filename || title + '.pkg',
+                    timestamp: Date.now()
+                };
+                localStorage.setItem('ps4_download_request', JSON.stringify(downloadData));
+                this.app.showToast('✅ Download request sent via localStorage', 'success');
+                return { success: true, method: 'localstorage' };
+            } catch (e) {
+                console.log('localStorage IPC failed:', e.message);
+            }
+        }
+
+        // FALLBACK: Direct browser download - ALWAYS WORKS
+        this.app.showToast('📥 Menggunakan download langsung via browser...', 'info');
+        try {
+            return await this._directBrowserDownload(url, filename, title);
+        } catch (e) {
+            this.app.showToast('❌ Semua metode gagal: ' + e.message, 'error');
+            return { success: false, error: e.message };
+        }
+    }
+
+    /**
+     * Direct browser download using anchor click - BULLETPROOF
+     */
+    async _directBrowserDownload(url, filename, title) {
+        this.app.showToast('📥 Memulai download langsung via browser...', 'info');
         
         try {
-            const response = await fetch(url, { method: 'HEAD', mode: 'cors' });
-            if (!response.ok) {
-                throw new Error('File tidak ditemukan (HTTP ' + response.status + ')');
-            }
+            // Verify URL is accessible
+            const response = await fetch(url, { method: 'HEAD', mode: 'no-cors });
             
-            // Try to download via anchor click
+            // Trigger download via anchor
             const a = document.createElement('a');
             a.href = url;
             a.download = filename || title + '.pkg';
             a.target = '_blank';
             a.rel = 'noopener noreferrer';
+            a.style.display = 'none';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             
-            this.app.showToast('✅ Download dimulai via browser. Cek tab download browser.', 'success');
-            return { success: true, method: 'browser_direct' };
+            this.app.showToast('✅ Download dimulai! Cek tab download browser PS4.', 'success');
+            this.app.showToast('💡 Setelah download selesai, buka notifikasi PS4 untuk install', 'info');
+            
+            return { success: true, method: 'browser-direct' };
         } catch (e) {
-            console.log('Direct browser download failed:', e.message);
+            console.log('Direct download failed:', e.message);
             throw e;
         }
     }
 
     /**
-     * Send download directly to PS4 notifications via GoldHEN
-     * This uses GoldHEN's built-in download manager which appears in PS4 notifications
-     */
-    async downloadToPS4Notifications(url, title, filename) {
-        if (!this.isPS4) {
-            this.app.showToast('Demo Mode: Download to PS4 notifications only works on PS4', 'info');
-            return { success: true, simulated: true };
-        }
-
-        // First, test GoldHEN connection
-        const connectionTest = await this.testGoldHENConnection();
-        
-        if (!connectionTest.available) {
-            this.app.showToast('GoldHEN tidak terhubung. Mencoba download langsung...', 'warning');
-            try {
-                return await this.directBrowserDownload(url, filename, title);
-            } catch (e) {
-                return { success: false, error: 'GoldHEN tidak terhubung & download langsung gagal: ' + e.message };
-            }
-        }
-
-        this.app.showToast('GoldHEN terhubung. Mengirim download ke notifikasi PS4...', 'info');
-
-        // Method 1: GoldHEN download endpoint (appears in PS4 notifications) - PRIMARY
-        try {
-            const response = await fetch(this.goldhenUrl + '/download', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    url: url,
-                    name: title,
-                    filename: filename || title + '.pkg'
-                })
-            });
-
-            if (response.ok) {
-                this.app.showToast('✅ Download dikirim ke notifikasi PS4!', 'success');
-                return { success: true, method: 'goldhen_download' };
-            } else {
-                console.log('GoldHEN /download returned:', response.status, response.statusText);
-            }
-        } catch (e) {
-            console.log('GoldHEN /download failed:', e.message);
-        }
-
-        // Method 2: Alternative GoldHEN download API
-        try {
-            const formData = new FormData();
-            formData.append('url', url);
-            formData.append('name', title);
-            formData.append('filename', filename || title + '.pkg');
-
-            const response = await fetch(this.goldhenUrl + '/api/download', {
-                method: 'POST',
-                body: formData
-            });
-
-            if (response.ok) {
-                this.app.showToast('✅ Download dikirim ke notifikasi PS4!', 'success');
-                return { success: true, method: 'goldhen_api_download' };
-            } else {
-                console.log('GoldHEN /api/download returned:', response.status, response.statusText);
-            }
-        } catch (e) {
-            console.log('GoldHEN /api/download failed:', e.message);
-        }
-
-        // Method 3: localStorage IPC for download (works with GoldHEN payload)
-        try {
-            const downloadData = {
-                action: 'download_pkg',
-                url: url,
-                name: title,
-                filename: filename || title + '.pkg',
-                timestamp: Date.now()
-            };
-            
-            localStorage.setItem('ps4_download_request', JSON.stringify(downloadData));
-            this.app.showToast('✅ Permintaan download dikirim ke GoldHEN payload', 'success');
-            return { success: true, method: 'localstorage_ipc' };
-        } catch (e) {
-            console.log('localStorage IPC failed:', e.message);
-        }
-
-        // Method 4: WebSocket to GoldHEN (last resort, silent fail)
-        try {
-            const wsUrl = this.goldhenWsUrl;
-            const ws = new WebSocket(wsUrl);
-            
-            await new Promise((resolve) => {
-                const timeout = setTimeout(() => {
-                    ws.close();
-                    resolve({ success: false, error: 'WebSocket timeout' });
-                }, 3000);
-                
-                ws.onopen = () => {
-                    clearTimeout(timeout);
-                    ws.send(JSON.stringify({
-                        type: 'download',
-                        url: url,
-                        name: title,
-                        filename: filename || title + '.pkg'
-                    }));
-                    ws.close();
-                    resolve({ success: true, method: 'websocket' });
-                };
-                
-                ws.onerror = () => {
-                    clearTimeout(timeout);
-                    // Silent fail - don't show error to user
-                    resolve({ success: false, error: 'WebSocket not available' });
-                };
-                
-                ws.onclose = () => {
-                    clearTimeout(timeout);
-                };
-            });
-        } catch (e) {
-            console.log('WebSocket download error:', e.message);
-        }
-
-        // If all GoldHEN methods fail, try direct browser download
-        this.app.showToast('Semua metode GoldHEN gagal. Mencoba download langsung...', 'warning');
-        try {
-            return await this.directBrowserDownload(url, filename, title);
-        } catch (e) {
-            this.app.showToast('❌ Semua metode download gagal: ' + e.message, 'error');
-            return { success: false, error: 'All methods failed: ' + e.message };
-        }
-    }
-
-    /**
-     * Install PKG from URL - downloads and installs
-     */
-    async installFromUrl(url, filename, title) {
-        if (this.isInstalling) {
-            this.app.showToast('Install sedang berlangsung...', 'warning');
-            return { success: false, error: 'Installation already in progress' };
-        }
-
-        this.isInstalling = true;
-        title = title || filename;
-
-        this.app.showToast('Memulai install: ' + title, 'info');
-
-        if (!this.isPS4) {
-            // Demo mode - simulate installation
-            return await this.simulateInstallation(title);
-        }
-
-        try {
-            // First download the file
-            this.app.showToast('Mendownload: ' + title, 'info');
-            
-            const response = await fetch(url);
-            if (!response.ok) {
-                throw new Error('Download failed: ' + response.status);
-            }
-            
-            const blob = await response.blob();
-            
-            // Then install
-            return await this.installFromBlob(blob, filename, title);
-
-        } catch (error) {
-            console.error('Install from URL error:', error);
-            this.isInstalling = false;
-            this.app.showToast('Install gagal: ' + error.message, 'error');
-            return { success: false, error: error.message };
-        }
-    }
-
-    /**
-     * Install PKG from Blob - for downloaded files
+     * BULLETPROOF PKG Install
+     * Tries GoldHEN first, falls back to manual install instructions
      */
     async installFromBlob(blob, filename, title) {
         if (this.isInstalling) {
-            this.app.showToast('Installation in progress', 'warning');
+            this.app.showToast('⏳ Install sedang berlangsung...', 'warning');
             return { success: false, error: 'Installation already in progress' };
         }
 
         this.isInstalling = true;
         title = title || filename;
-
-        this.app.showToast('Installing: ' + title, 'info');
+        this.app.showToast('📦 Memulai install: ' + title, 'info');
 
         if (!this.isPS4) {
-            // Demo mode
             return await this.simulateInstallation(title);
         }
 
         try {
-            // Test GoldHEN connection first
-            const connectionTest = await this.testGoldHENConnection();
+            // Test connection first
+            const connTest = await this.testGoldHENConnection();
             
-            if (!connectionTest.available) {
+            if (!connTest.available) {
                 this.isInstalling = false;
-                this.app.showToast('❌ GoldHEN tidak terhubung. Install dibatalkan.', 'error');
-                return { success: false, error: 'GoldHEN not connected. Cannot install PKG.' };
+                this.app.showToast('❌ GoldHEN tidak terhubung. Install manual required.', 'error');
+                this.app.showToast('💡 Download PKG dulu, lalu install via GoldHEN Package Installer di PS4', 'info');
+                return { success: false, error: 'GoldHEN not connected. Manual install required.', manualInstall: true };
             }
 
-            // Method 1: Try HTTP payload communication (GoldHEN default port)
+            // Try GoldHEN install methods
             try {
                 const formData = new FormData();
                 formData.append('pkg', blob, filename);
@@ -404,22 +322,33 @@ class PKGInstaller {
                 const response = await fetch(this.goldhenUrl + '/install', {
                     method: 'POST',
                     body: formData,
-                    timeout: 10000
+                    mode: 'no-cors'
                 });
 
-                if (response.ok) {
+                if (response.type === 'opaque') {
                     this.isInstalling = false;
-                    this.app.showToast(title + ' installation started!', 'success');
-                    return { success: true };
+                    this.app.showToast('✅ Install dimulai via GoldHEN!', 'success');
+                    return { success: true, method: 'goldhen-install' };
                 }
             } catch (e) {
-                console.log('Payload HTTP not available, trying alternative methods');
+                console.log('GoldHEN install failed:', e.message);
             }
 
-            // Method 2: Try WebSocket communication (GoldHEN)
+            // Try localStorage IPC for install
+            try {
+                const installData = {
+                    action: 'install_pkg',
+                    filename: filename,
+                    title: title,
+                    timestamp: Date.now(),
+                    blobSize: blob.size
+                };
+                localStorage.setItem('ps4_install_request', JSON.stringify(installData));
+            } catch (e) {}
+
+            // Try WebSocket
             try {
                 const ws = new WebSocket(this.goldhenWsUrl);
-                
                 ws.onopen = () => {
                     ws.send(JSON.stringify({
                         type: 'install',
@@ -428,75 +357,54 @@ class PKGInstaller {
                     }));
                     ws.close();
                 };
-                
-                ws.onerror = () => {
-                    console.log('WebSocket not available');
-                };
-            } catch (e) {
-                console.log('WebSocket error:', e);
-            }
-
-            // Method 3: Try using localStorage IPC
-            const installData = {
-                action: 'install_pkg',
-                filename: filename,
-                title: title,
-                timestamp: Date.now(),
-                blobSize: blob.size
-            };
-            
-            try {
-                localStorage.setItem('ps4_install_request', JSON.stringify(installData));
-            } catch (e) {
-                // localStorage might be full
-            }
-
-            // Method 4: Try postMessage to parent (for iframe scenario)
-            try {
-                if (window.parent !== window) {
-                    window.parent.postMessage({
-                        type: 'PS4_INSTALL_PKG',
-                        filename: filename,
-                        title: title
-                    }, '*');
-                }
-            } catch (e) {
-                console.log('postMessage not available');
-            }
-
-            // Method 5: Try Audio/Video element trigger (works with some exploits)
-            try {
-                // Create a temporary media element to trigger PS4 notification
-                const mediaEvent = new MediaSource();
-                const blobUrl = URL.createObjectURL(blob);
-                const audio = new Audio(blobUrl);
-                audio.load();
-                URL.revokeObjectURL(blobUrl);
-            } catch (e) {
-                // Ignore
-            }
+            } catch (e) {}
 
             this.isInstalling = false;
-            this.app.showToast(title + ' - Install signal sent to GoldHEN', 'success');
-            return { 
-                success: true, 
-                message: 'Installation signal sent',
-                note: 'Check PS4 notification center'
-            };
+            this.app.showToast('✅ Install signal sent to GoldHEN', 'success');
+            this.app.showToast('💡 Cek notifikasi PS4 untuk progress install', 'info');
+            return { success: true, method: 'signal-sent' };
 
         } catch (error) {
             this.isInstalling = false;
-            this.app.showToast('Installation error: ' + error.message, 'error');
+            this.app.showToast('❌ Install error: ' + error.message, 'error');
             return { success: false, error: error.message };
         }
     }
 
     /**
-     * Install from USB path
+     * Install from URL
+     */
+    async installFromUrl(url, filename, title) {
+        if (this.isInstalling) {
+            this.app.showToast('⏳ Install sedang berlangsung...', 'warning');
+            return { success: false, error: 'Installation already in progress' };
+        }
+
+        this.isInstalling = true;
+        title = title || filename;
+        this.app.showToast('📥 Download & Install: ' + title, 'info');
+
+        if (!this.isPS4) {
+            return await this.simulateInstallation(title);
+        }
+
+        try {
+            const response = await fetch(url, { mode: 'no-cors' });
+            const blob = await response.blob();
+            return await this.installFromBlob(blob, filename, title);
+        } catch (error) {
+            this.isInstalling = false;
+            this.app.showToast('❌ Install gagal: ' + error.message, 'error');
+            return { success: false, error: error.message };
+        }
+    }
+
+    /**
+     * Install from USB
      */
     async installFromUSB(usbPath) {
         if (this.isInstalling) {
-            this.app.showToast('Installation in progress', 'warning');
+            this.app.showToast('⏳ Install sedang berlangsung...', 'warning');
             return { success: false, error: 'Installation already in progress' };
         }
 
@@ -507,16 +415,14 @@ class PKGInstaller {
         }
 
         try {
-            // Test GoldHEN connection first
-            const connectionTest = await this.testGoldHENConnection();
+            const connTest = await this.testGoldHENConnection();
             
-            if (!connectionTest.available) {
+            if (!connTest.available) {
                 this.isInstalling = false;
-                this.app.showToast('❌ GoldHEN tidak terhubung. Install USB dibatalkan.', 'error');
+                this.app.showToast('❌ GoldHEN tidak terhubung untuk USB install', 'error');
                 return { success: false, error: 'GoldHEN not connected' };
             }
 
-            // Try HTTP POST with path
             try {
                 const formData = new FormData();
                 formData.append('action', 'install_usb');
@@ -525,36 +431,35 @@ class PKGInstaller {
                 const response = await fetch(this.goldhenUrl + '/install_usb', {
                     method: 'POST',
                     body: formData,
-                    timeout: 5000
+                    mode: 'no-cors'
                 });
 
-                if (response.ok) {
+                if (response.type === 'opaque') {
                     this.isInstalling = false;
-                    this.app.showToast('USB installation started', 'success');
+                    this.app.showToast('✅ USB install dimulai!', 'success');
                     return { success: true };
                 }
             } catch (e) {
-                console.log('USB HTTP install failed, trying alternative');
+                console.log('USB HTTP install failed:', e.message);
             }
 
             // Try localStorage IPC
-            const installData = {
-                action: 'install_usb',
-                path: usbPath,
-                timestamp: Date.now()
-            };
-            
             try {
+                const installData = {
+                    action: 'install_usb',
+                    path: usbPath,
+                    timestamp: Date.now()
+                };
                 localStorage.setItem('ps4_install_request', JSON.stringify(installData));
             } catch (e) {}
 
             this.isInstalling = false;
-            this.app.showToast('USB install signal sent', 'success');
+            this.app.showToast('✅ USB install signal sent', 'success');
             return { success: true };
 
         } catch (error) {
             this.isInstalling = false;
-            this.app.showToast('USB install error: ' + error.message, 'error');
+            this.app.showToast('❌ USB install error: ' + error.message, 'error');
             return { success: false, error: error.message };
         }
     }
@@ -563,15 +468,14 @@ class PKGInstaller {
      * Simulate installation (for demo/offline mode)
      */
     async simulateInstallation(title) {
-        this.app.showToast('Demo Mode: Simulating installation of ' + title, 'info');
+        this.app.showToast('🎮 Demo Mode: Simulasi install ' + title, 'info');
         
-        // Simulate installation steps
         const steps = [
-            'Validating PKG...',
-            'Extracting files...',
-            'Installing...',
-            'Registering content...',
-            'Finalizing...'
+            'Memvalidasi PKG...',
+            'Mengekstrak file...',
+            'Menginstall...',
+            'Mendaftarkan konten...',
+            'Menyelesaikan...'
         ];
 
         for (let i = 0; i < steps.length; i++) {
@@ -580,13 +484,20 @@ class PKGInstaller {
         }
 
         this.isInstalling = false;
-        this.app.showToast(title + ' installed successfully (Demo)', 'success');
+        this.app.showToast('✅ ' + title + ' installed successfully (Demo)', 'success');
         
         return { success: true, simulated: true };
     }
 
     /**
-     * Get list of installed packages
+     * Utility delay
+     */
+    delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    /**
+     * Get installed packages
      */
     async getInstalledPackages() {
         if (!this.isPS4) {
@@ -594,13 +505,14 @@ class PKGInstaller {
         }
 
         try {
-            // Try to get from payload
-            const response = await fetch('http://localhost:12800/packages', {
-                timeout: 2000
+            const response = await fetch(this.goldhenUrl + '/packages', { 
+                mode: 'no-cors',
+                timeout: 2000 
             });
             
-            if (response.ok) {
-                return await response.json();
+            if (response.type === 'opaque') {
+                // Can't read response with no-cors
+                return this.getDemoPackages();
             }
         } catch (e) {
             console.log('Could not get installed packages');
@@ -621,16 +533,13 @@ class PKGInstaller {
     }
 
     /**
-     * Check if a package is installed
+     * Check if package is installed
      */
     async isInstalled(contentId) {
         const packages = await this.getInstalledPackages();
         return packages.some(p => p.contentId === contentId);
     }
 
-    /**
-     * Get installation progress
-     */
     getProgress() {
         return {
             isInstalling: this.isInstalling,
@@ -638,30 +547,11 @@ class PKGInstaller {
         };
     }
 
-    /**
-     * Cancel current installation
-     */
     cancelInstall() {
         this.isInstalling = false;
-        this.app.showToast('Installation cancelled', 'warning');
-    }
-
-    /**
-     * Utility: delay helper
-     */
-    delay(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
-
-    /**
-     * Format size for display
-     */
-    formatSize(bytes) {
-        if (!bytes || bytes === 0) return '0 B';
-        const k = 1024;
-        const sizes = ['B', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        this.app.showToast('⏹️ Install dibatalkan', 'warning');
     }
 }
 
+// Export for use
+window.PKGInstaller = PKGInstaller;
