@@ -309,15 +309,22 @@ class PKGInstaller {
         }
 
         try {
-            // Method 1: Try HTTP payload communication (GoldHEN default port)
-            const payloadUrl = 'http://localhost:12800';
+            // Test GoldHEN connection first
+            const connectionTest = await this.testGoldHENConnection();
             
+            if (!connectionTest.available) {
+                this.isInstalling = false;
+                this.app.showToast('❌ GoldHEN tidak terhubung. Install dibatalkan.', 'error');
+                return { success: false, error: 'GoldHEN not connected. Cannot install PKG.' };
+            }
+
+            // Method 1: Try HTTP payload communication (GoldHEN default port)
             try {
                 const formData = new FormData();
                 formData.append('pkg', blob, filename);
                 formData.append('action', 'install');
 
-                const response = await fetch(payloadUrl + '/install', {
+                const response = await fetch(this.goldhenUrl + '/install', {
                     method: 'POST',
                     body: formData,
                     timeout: 10000
@@ -334,7 +341,7 @@ class PKGInstaller {
 
             // Method 2: Try WebSocket communication (GoldHEN)
             try {
-                const ws = new WebSocket('ws://localhost:12800');
+                const ws = new WebSocket(this.goldhenWsUrl);
                 
                 ws.onopen = () => {
                     ws.send(JSON.stringify({
@@ -393,7 +400,7 @@ class PKGInstaller {
             }
 
             this.isInstalling = false;
-            this.app.showToast(title + ' - Signal sent to payload', 'success');
+            this.app.showToast(title + ' - Install signal sent to GoldHEN', 'success');
             return { 
                 success: true, 
                 message: 'Installation signal sent',
@@ -423,8 +430,14 @@ class PKGInstaller {
         }
 
         try {
-            // For USB installation, we typically need to send the path to the payload
-            const payloadUrl = 'http://localhost:12800';
+            // Test GoldHEN connection first
+            const connectionTest = await this.testGoldHENConnection();
+            
+            if (!connectionTest.available) {
+                this.isInstalling = false;
+                this.app.showToast('❌ GoldHEN tidak terhubung. Install USB dibatalkan.', 'error');
+                return { success: false, error: 'GoldHEN not connected' };
+            }
 
             // Try HTTP POST with path
             try {
@@ -432,7 +445,7 @@ class PKGInstaller {
                 formData.append('action', 'install_usb');
                 formData.append('path', usbPath);
 
-                const response = await fetch(payloadUrl + '/install_usb', {
+                const response = await fetch(this.goldhenUrl + '/install_usb', {
                     method: 'POST',
                     body: formData,
                     timeout: 5000
