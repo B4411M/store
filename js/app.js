@@ -1722,12 +1722,15 @@ class PS4StoreApp {
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+// Initialize app
+function initApp() {
+    if (window.app) return; // Prevent double initialization
     window.app = new PS4StoreApp();
-});
+}
 
-// Handle case where DOMContentLoaded already fired (scripts at end of body)
-if (document.readyState !== 'loading') {
-    window.app = new PS4StoreApp();
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initApp);
+} else {
+    initApp();
 }
 
